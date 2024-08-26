@@ -1,0 +1,12 @@
+#cloud-config
+users:
+- name: bjk
+  plain_text_passwd: 'bjk'
+  homedir: /home/bjk
+  shell: /bin/bash
+  lock_passwd: True
+  gecos: Brian Ketelsen
+  groups: [adm, cdrom, dip, sudo]
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  ssh_authorized_keys:
+    - SSHKEY    

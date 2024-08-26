@@ -1,0 +1,152 @@
+package application
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+
+	"github.com/bketelsen/incus-compose/pkg/incus"
+)
+
+func (app *Compose) CreateVolumesForService(service string) error {
+	slog.Info("Creating Volumes", slog.String("instance", service))
+
+	svc, ok := app.Services[service]
+	if !ok {
+		return fmt.Errorf("service %s not found", service)
+	}
+	for volName, vol := range svc.Volumes {
+
+		slog.Debug("Volume", slog.String("name", vol.Name(app.Name, service, volName)), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
+		err := app.createVolume(vol.Name(app.Name, service, volName), vol, vol.Snapshot)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (app *Compose) DeleteVolumesForService(service string) error {
+	slog.Info("Deleting Volumes", slog.String("instance", service))
+
+	svc, ok := app.Services[service]
+	if !ok {
+		return fmt.Errorf("service %s not found", service)
+	}
+	for volName, vol := range svc.Volumes {
+
+		slog.Debug("Volume", slog.String("name", vol.Name(app.Name, service, volName)), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
+
+		err := app.deleteVolume(vol.Name(app.Name, service, volName), vol)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (app *Compose) AttachVolumesForService(service string) error {
+	slog.Info("Attaching Volumes", slog.String("instance", service))
+
+	svc, ok := app.Services[service]
+	if !ok {
+		return fmt.Errorf("service %s not found", service)
+	}
+	for volName, vol := range svc.Volumes {
+
+		err := app.attachVolume(vol.Name(app.Name, service, volName), service, vol)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (app *Compose) createVolume(name string, vol Volume, snapshot Snapshot) error {
+	slog.Info("Creating Volume", slog.String("volume", name))
+
+	args := []string{"storage", "volume", "create", vol.Pool, name}
+	args = append(args, "--project", app.GetProject())
+	if snapshot.Schedule != "" {
+		args = append(args, "snapshots.schedule="+"\""+snapshot.Schedule+"\"")
+	}
+	if snapshot.Pattern != "" {
+		args = append(args, "snapshots.pattern="+"\""+snapshot.Pattern+"\"")
+	}
+	if snapshot.Expiry != "" {
+		args = append(args, "snapshots.expiry="+"\""+snapshot.Expiry+"\"")
+	}
+	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
+
+	out, err := incus.ExecuteShell(context.Background(), args)
+	if err != nil {
+		slog.Error("Incus error", slog.String("message", out))
+		return err
+	}
+	slog.Debug("Incus ", slog.String("message", out))
+	return nil
+}
+
+func (app *Compose) deleteVolume(name string, vol Volume) error {
+	slog.Info("Deleting Volume", slog.String("volume", name))
+
+	args := []string{"storage", "volume", "delete", vol.Pool, name}
+	args = append(args, "--project", app.GetProject())
+
+	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
+
+	out, err := incus.ExecuteShell(context.Background(), args)
+	if err != nil {
+		slog.Error("Incus error", slog.String("message", out))
+		return err
+	}
+	slog.Debug("Incus ", slog.String("message", out))
+	return nil
+}
+func (app *Compose) attachVolume(name string, service string, vol Volume) error {
+	slog.Info("Attaching Volume", slog.String("volume", name))
+
+	args := []string{"storage", "volume", "attach", vol.Pool, name, service, vol.Mountpoint}
+	args = append(args, "--project", app.GetProject())
+
+	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
+
+	out, err := incus.ExecuteShell(context.Background(), args)
+	if err != nil {
+		slog.Error("Incus error", slog.String("message", out))
+		return err
+	}
+	slog.Debug("Incus ", slog.String("message", out))
+	return nil
+}
+
+func (app *Compose) ShowVolumesForService(service string) error {
+	slog.Info("Showing", slog.String("instance", service))
+	svc, ok := app.Services[service]
+	if !ok {
+		return fmt.Errorf("service %s not found", service)
+	}
+	for volName, vol := range svc.Volumes {
+		slog.Info("Showing volume", slog.String("volume", volName))
+
+		args := []string{"storage", "volume", "show", vol.Pool, vol.Name(app.Name, service, volName)}
+		args = append(args, "--project", app.GetProject())
+
+		slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
+		out, err := incus.ExecuteShellStream(context.Background(), args)
+		if err != nil {
+			slog.Error("Incus error", slog.String("message", out))
+			return err
+		}
+		return nil
+	}
+	return nil
+
+}
+
+func (v *Volume) Name(application string, service string, volume string) string {
+	return fmt.Sprintf("%s-%s-%s", application, service, volume)
+}

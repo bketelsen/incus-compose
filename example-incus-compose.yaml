@@ -1,0 +1,22 @@
+name: testapp
+project: testproject
+services:
+    testservice:
+        image: images:ubuntu/noble/cloud
+        gpu: false
+        volumes:
+            testvolume:
+                mountpoint: /data
+                pool: rpool
+        binds:
+            testbind:
+                type: disk
+                source: /mnt/media
+                target: /media
+                shift: true
+        additional_profiles:
+            - profile2
+        cloud_init_user_data_file: testapp.yaml
+profiles:
+    - default
+    - profile1
