@@ -25,7 +25,7 @@ See the samples in the `samples` directory.
 
 
 ```
-name: cloud  # compose app name, used in custom storag & profile naming
+name: cloud  # compose app name, used in custom storage & profile naming
 project: default  # incus project to use
 export_path: /var/backup/cloud  # where to export backups of instances and volumes (unimplemented)
 services:  # list of instances to create
