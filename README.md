@@ -12,8 +12,16 @@ Usage not recommended.
 USE AT YOUR OWN RISK
 
 `incus-compose up` - works
+
 `incus-compose rm` - works
+
 `incus-compose info` - works
+
+`incus-compose snapshot` - works
+
+`incus-compose export` - works
+
+
 
 This project currently mixes API & CLI commands, so it only works against a "local" server for now.
 
