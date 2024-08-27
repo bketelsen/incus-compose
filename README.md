@@ -34,7 +34,7 @@ services:  # list of instances to create
         gpu: true # share the gpu with the instance
         cloud_init_user_data_file: mydb.yaml # if set, creates a custom profile and applies the cloud-init
         additional_profiles: # additional profile to add to this instance
-            - anotherprofile
+            - nvmestorage
         snapshot: # instance snapshot schedule
             schedule: "@hourly"
             expiry: 2w
