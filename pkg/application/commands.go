@@ -58,6 +58,29 @@ func (app *Compose) Stop() error {
 	return nil
 }
 
+func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
+	for _, service := range app.Order(false) {
+		slog.Info("Instance snapshot start", slog.String("instance", service))
+		err := app.SnapshotInstance(service, noexpiry, stateful, volumes)
+		if err != nil {
+			return err
+		}
+		slog.Info("Instance snapshot complete", slog.String("instance", service))
+		if volumes {
+			for volName, vol := range app.Services[service].Volumes {
+				slog.Info("Volume snapshot start", slog.String("volume", vol.Name(app.Name, service, volName)))
+				err := app.SnapshotVolume(vol.Pool, vol.Name(app.Name, service, volName), noexpiry, stateful, volumes)
+				if err != nil {
+					return err
+				}
+				slog.Info("Volume snapshot complete", slog.String("volume", vol.Name(app.Name, service, volName)))
+			}
+		}
+
+	}
+	return nil
+}
+
 func (app *Compose) Start() error {
 	for _, service := range app.Order(true) {
 
