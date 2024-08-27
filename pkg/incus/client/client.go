@@ -2,6 +2,11 @@ package client
 
 import (
 	"errors"
+	"fmt"
+	"io"
+	"net/url"
+	"os"
+	"path"
 	"time"
 
 	incus "github.com/lxc/incus/client"
@@ -177,4 +182,125 @@ func (i *IncusClient) SnapshotVolume(pool, volume, snapshotName string, stateful
 
 	return op.Wait()
 
+}
+
+func (i *IncusClient) ExportInstance(instanceName, targetName string, instanceOnly bool) error {
+
+	req := api.InstanceBackupsPost{
+		Name:             "",
+		ExpiresAt:        time.Now().Add(24 * time.Hour),
+		InstanceOnly:     instanceOnly,
+		OptimizedStorage: false,
+	}
+
+	op, err := i.client.CreateInstanceBackup(instanceName, req)
+	if err != nil {
+		return fmt.Errorf("create instance backup: %w", err)
+	}
+	err = op.Wait()
+	if err != nil {
+		return err
+	}
+	// Get name of backup
+	uStr := op.Get().Resources["backups"][0]
+	u, err := url.Parse(uStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL %q: %w", uStr, err)
+	}
+
+	backupName, err := url.PathUnescape(path.Base(u.EscapedPath()))
+	if err != nil {
+		return fmt.Errorf("invalid backup name segment in path %q: %w", u.EscapedPath(), err)
+	}
+
+	defer func() {
+		// Delete backup after we're done
+		op, err = i.client.DeleteInstanceBackup(instanceName, backupName)
+		if err == nil {
+			_ = op.Wait()
+		}
+	}()
+
+	var target *os.File
+
+	target, err = os.Create(targetName)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = target.Close() }()
+
+	backupFileRequest := incus.BackupFileRequest{
+		BackupFile: io.WriteSeeker(target),
+	}
+	_, err = i.client.GetInstanceBackupFile(instanceName, backupName, &backupFileRequest)
+	if err != nil {
+		_ = os.Remove(targetName)
+		return fmt.Errorf("fetch instance backup file: %w", err)
+	}
+	err = target.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close export file: %w", err)
+	}
+
+	return nil
+}
+func (i *IncusClient) ExportVolume(pool, volume, targetName string) error {
+
+	req := api.StoragePoolVolumeBackupsPost{
+		Name:             "",
+		ExpiresAt:        time.Now().Add(24 * time.Hour),
+		VolumeOnly:       true,
+		OptimizedStorage: false,
+	}
+
+	op, err := i.client.CreateStoragePoolVolumeBackup(pool, volume, req)
+	if err != nil {
+		return fmt.Errorf("failed to create storage volume backup: %w", err)
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return err
+	}
+
+	// Get name of backup
+	uStr := op.Get().Resources["backups"][0]
+	u, err := url.Parse(uStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL %q: %w", uStr, err)
+	}
+
+	backupName, err := url.PathUnescape(path.Base(u.EscapedPath()))
+	if err != nil {
+		return fmt.Errorf("invalid backup name segment in path %q: %w", u.EscapedPath(), err)
+	}
+
+	defer func() {
+		// Delete backup after we're done
+		op, err = i.client.DeleteStoragePoolVolumeBackup(pool, volume, backupName)
+		if err == nil {
+			_ = op.Wait()
+		}
+	}()
+
+	target, err := os.Create(targetName)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = target.Close() }()
+
+	backupFileRequest := incus.BackupFileRequest{
+		BackupFile: io.WriteSeeker(target),
+	}
+
+	// Export tarball
+	_, err = i.client.GetStoragePoolVolumeBackupFile(pool, volume, backupName, &backupFileRequest)
+	if err != nil {
+		_ = os.Remove(targetName)
+		return fmt.Errorf("failed to fetch storage volume backup file: %w", err)
+	}
+
+	return nil
 }
