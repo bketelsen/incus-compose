@@ -41,7 +41,7 @@ services:  # list of instances to create
         volumes: # incus volumes to attach
             config:
                 mountpoint: /config
-                pool: default
+                pool: fast
         binds: # host directories to bind
             media:
                 type: disk
