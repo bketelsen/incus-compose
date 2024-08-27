@@ -81,6 +81,33 @@ func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
 	return nil
 }
 
+func (app *Compose) Export(volumes bool, customVolumesOnly bool) error {
+	slog.Info("Export Root", slog.String("path", app.ExportPath))
+
+	for _, service := range app.Order(false) {
+		if !customVolumesOnly {
+			slog.Info("Instance export start", slog.String("instance", service))
+			err := app.ExportInstance(service, volumes)
+			if err != nil {
+				return err
+			}
+			slog.Info("Instance export complete", slog.String("instance", service))
+		}
+		if customVolumesOnly {
+			for volName, vol := range app.Services[service].Volumes {
+				slog.Info("Volume export start", slog.String("volume", vol.Name(app.Name, service, volName)))
+				err := app.ExportVolume(vol.Pool, vol.Name(app.Name, service, volName))
+				if err != nil {
+					return err
+				}
+				slog.Info("Volume export complete", slog.String("volume", vol.Name(app.Name, service, volName)))
+			}
+		}
+
+	}
+	return nil
+}
+
 func (app *Compose) Start() error {
 	for _, service := range app.Order(true) {
 

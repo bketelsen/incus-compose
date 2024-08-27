@@ -1,6 +1,6 @@
 name: cloud
 project: default
-export_path: /var/backup/cloud
+export_path: /var/home/bjk/backup/cloud 
 services:
     mydb:
         image: images:ubuntu/noble/cloud

@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 )
@@ -38,20 +39,18 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("export called")
+		slog.Info("Exporting", slog.String("app", app.Name))
+
+		err := app.Export(cmd.Flag("volumes").Changed, cmd.Flag("only-volumes").Changed)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
+	exportCmd.Flags().BoolP("volumes", "v", false, "Export volumes, including bind mounts (probably not be what you want)")
+	exportCmd.Flags().BoolP("only-volumes", "o", false, "Only export custom volumes")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// exportCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// exportCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
