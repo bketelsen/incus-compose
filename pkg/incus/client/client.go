@@ -108,7 +108,7 @@ func (i *IncusClient) DeleteProfile(name string) error {
 
 // 		args := []string{"config", "device", "add", service, bindName, bind.Type, "source=" + bind.Source, "path=" + bind.Target}
 
-func (i *IncusClient) AddBind(instance, name string, device map[string]string) error {
+func (i *IncusClient) AddDevice(instance, name string, device map[string]string) error {
 
 	inst, etag, err := i.client.GetInstance(instance)
 	if err != nil {

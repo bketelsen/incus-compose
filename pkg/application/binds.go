@@ -33,7 +33,7 @@ func (app *Compose) CreateBindsForService(service string) error {
 			return err
 		}
 		client.WithProject(app.GetProject())
-		err = client.AddBind(service, bindName, device)
+		err = client.AddDevice(service, bindName, device)
 		if err != nil {
 			return err
 		}
