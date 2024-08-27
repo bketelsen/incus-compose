@@ -23,8 +23,8 @@ type Compose struct {
 type Service struct {
 	Image                 string            `yaml:"image" validate:"required"`
 	GPU                   bool              `yaml:"gpu,omitempty"`
-	Volumes               map[string]Volume `yaml:"volumes" validate:"dive,required"`
-	BindMounts            map[string]Bind   `yaml:"binds"`
+	Volumes               map[string]Volume `yaml:"volumes,omitempty" validate:"dive,required"`
+	BindMounts            map[string]Bind   `yaml:"binds,omitempty"`
 	AdditionalProfiles    []string          `yaml:"additional_profiles,omitempty" validate:"dive,profile-exists"`
 	EnvironmentFile       string            `yaml:"environment_file,omitempty"`
 	CloudInitUserData     string            `yaml:"cloud_init_user_data,omitempty"`
@@ -108,10 +108,11 @@ func Generate(path string) error {
 	service.GPU = false
 	service.AdditionalProfiles = []string{"profile2"}
 	service.CloudInitUserDataFile = "testapp.yaml"
+	service.DependsOn = []string{"dbservice"}
 
 	volume := Volume{}
-	volume.Mountpoint = "/data"
-	volume.Pool = "rpool"
+	volume.Mountpoint = "/metadata"
+	volume.Pool = "slowpool"
 
 	bind := Bind{}
 	bind.Type = "disk"
@@ -120,16 +121,33 @@ func Generate(path string) error {
 	bind.Shift = true
 
 	service.Volumes = map[string]Volume{
-		"testvolume": volume,
+		"metadatavolume": volume,
 	}
 	service.BindMounts = map[string]Bind{
-		"testbind": bind,
+		"mediabind": bind,
+	}
+	service.Snapshot = Snapshot{
+		Schedule: "@daily",
+		Expiry:   "14d",
 	}
 
+	service2 := Service{}
+	service2.Image = "docker:postgres"
+
+	volume2 := Volume{}
+	volume2.Mountpoint = "/data"
+	volume2.Pool = "fast"
+	volume2.Snapshot = Snapshot{
+		Schedule: "@hourly",
+		Expiry:   "7d",
+	}
+	service2.Volumes = map[string]Volume{
+		"data": volume2,
+	}
 	app.Services = map[string]Service{
 		"testservice": service,
+		"dbservice":   service2,
 	}
-
 	data, err := yaml.Marshal(app)
 	if err != nil {
 		return err

@@ -141,10 +141,13 @@ func globalPreRunHook(cmd *cobra.Command, args []string) {
 			for _, e := range validationErrors {
 				slog.Error("Validation error", slog.String("namespace", e.StructNamespace()), slog.String("field", e.Field()), slog.String("error", e.Tag()))
 			}
+			os.Exit(1)
+
 		} else {
-			slog.Error("Loading yaml", slog.String("error", err.Error()))
+			// this could be ok, for example when generating a new config
+			// probably need to add a check for this in commands that expect a valid config
+			slog.Info("No compose file found")
 		}
-		os.Exit(1)
 	}
 }
 

@@ -1,15 +1,23 @@
 name: testapp
 project: testproject
 services:
+    dbservice:
+        image: docker:postgres
+        volumes:
+            data:
+                mountpoint: /data
+                pool: fast
+                snapshot:
+                    schedule: '@hourly'
+                    expiry: 7d
     testservice:
         image: images:ubuntu/noble/cloud
-        gpu: false
         volumes:
-            testvolume:
-                mountpoint: /data
-                pool: rpool
+            metadatavolume:
+                mountpoint: /metadata
+                pool: slowpool
         binds:
-            testbind:
+            mediabind:
                 type: disk
                 source: /mnt/media
                 target: /media
@@ -17,6 +25,11 @@ services:
         additional_profiles:
             - profile2
         cloud_init_user_data_file: testapp.yaml
+        snapshot:
+            schedule: '@daily'
+            expiry: 14d
+        depends_on:
+            - dbservice
 profiles:
     - default
     - profile1
