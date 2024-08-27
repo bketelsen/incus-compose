@@ -1,11 +1,10 @@
 package application
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 
-	"github.com/bketelsen/incus-compose/pkg/incus"
+	"github.com/bketelsen/incus-compose/pkg/incus/client"
 )
 
 func (app *Compose) CreateBindsForService(service string) error {
@@ -22,43 +21,44 @@ func (app *Compose) CreateBindsForService(service string) error {
 
 		slog.Info("Creating BindMount", slog.String("name", bindName))
 
-		args := []string{"config", "device", "add", service, bindName, bind.Type, "source=" + bind.Source, "path=" + bind.Target}
+		device := map[string]string{}
+		device["type"] = bind.Type
+		device["source"] = bind.Source
+		device["path"] = bind.Target
 		if bind.Shift {
-			args = append(args, "shift=true")
+			device["shift"] = "true"
 		}
-
-		args = append(args, "--project", app.GetProject())
-
-		slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
-
-		out, err := incus.ExecuteShell(context.Background(), args)
+		client, err := client.NewIncusClient()
 		if err != nil {
-			slog.Error("Incus error", slog.String("message", out))
 			return err
 		}
-		slog.Debug("Incus ", slog.String("message", out))
+		client.WithProject(app.GetProject())
+		err = client.AddBind(service, bindName, device)
+		if err != nil {
+			return err
+		}
 
 	}
 
 	return nil
 }
 
-func (app *Compose) ShowDevicesForService(service string) error {
-	slog.Info("Showing Device Info", slog.String("service", service))
+// func (app *Compose) ShowDevicesForService(service string) error {
+// 	slog.Info("Showing Device Info", slog.String("service", service))
 
-	_, ok := app.Services[service]
-	if !ok {
-		return fmt.Errorf("service %s not found", service)
-	}
+// 	_, ok := app.Services[service]
+// 	if !ok {
+// 		return fmt.Errorf("service %s not found", service)
+// 	}
 
-	args := []string{"config", "device", "show", service}
-	args = append(args, "--project", app.GetProject())
+// 	args := []string{"config", "device", "show", service}
+// 	args = append(args, "--project", app.GetProject())
 
-	out, err := incus.ExecuteShellStream(context.Background(), args)
-	if err != nil {
-		slog.Error("Incus error", slog.String("message", out))
-		return err
-	}
-	slog.Debug("Incus ", slog.String("message", out))
-	return nil
-}
+// 	out, err := incus.ExecuteShellStream(context.Background(), args)
+// 	if err != nil {
+// 		slog.Error("Incus error", slog.String("message", out))
+// 		return err
+// 	}
+// 	slog.Debug("Incus ", slog.String("message", out))
+// 	return nil
+// }

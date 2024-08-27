@@ -1,6 +1,8 @@
 package client
 
 import (
+	"errors"
+
 	incus "github.com/lxc/incus/client"
 	"github.com/lxc/incus/shared/api"
 )
@@ -102,4 +104,33 @@ func (i *IncusClient) CreateProfile(name string, data api.ProfilePut) error {
 }
 func (i *IncusClient) DeleteProfile(name string) error {
 	return i.client.DeleteProfile(name)
+}
+
+// 		args := []string{"config", "device", "add", service, bindName, bind.Type, "source=" + bind.Source, "path=" + bind.Target}
+
+func (i *IncusClient) AddBind(instance, name string, device map[string]string) error {
+
+	inst, etag, err := i.client.GetInstance(instance)
+	if err != nil {
+		return err
+	}
+
+	_, ok := inst.Devices[name]
+	if ok {
+		return errors.New("device already exists")
+	}
+
+	inst.Devices[name] = device
+
+	op, err := i.client.UpdateInstance(instance, inst.Writable(), etag)
+	if err != nil {
+		return err
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
