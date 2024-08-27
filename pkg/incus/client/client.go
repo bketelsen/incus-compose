@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"time"
 
 	incus "github.com/lxc/incus/client"
 	"github.com/lxc/incus/shared/api"
@@ -133,4 +134,47 @@ func (i *IncusClient) AddDevice(instance, name string, device map[string]string)
 	}
 
 	return nil
+}
+
+func (i *IncusClient) SnapshotInstance(instanceName, snapshotName string, stateful bool, noexpiry bool, expiration time.Time) error {
+
+	req := api.InstanceSnapshotsPost{
+		Name:     snapshotName,
+		Stateful: stateful,
+	}
+
+	if noexpiry {
+		req.ExpiresAt = &time.Time{}
+	} else if !expiration.IsZero() {
+		req.ExpiresAt = &expiration
+	}
+
+	op, err := i.client.CreateInstanceSnapshot(instanceName, req)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+
+}
+
+func (i *IncusClient) SnapshotVolume(pool, volume, snapshotName string, stateful bool, noexpiry bool, expiration time.Time) error {
+
+	req := api.StorageVolumeSnapshotsPost{
+		Name: snapshotName,
+	}
+
+	if noexpiry {
+		req.ExpiresAt = &time.Time{}
+	} else if !expiration.IsZero() {
+		req.ExpiresAt = &expiration
+	}
+
+	op, err := i.client.CreateStoragePoolVolumeSnapshot(pool, "custom", volume, req)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+
 }

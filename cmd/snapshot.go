@@ -39,8 +39,14 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		slog.Debug("snapshot", slog.String("app", app.Name))
-		fmt.Println("backup called")
+		slog.Info("Snapshotting", slog.String("app", app.Name))
+
+		//	incus.Execute(context.Background(), []string{"ls"})
+
+		err := app.Snapshot(cmd.Flag("noexpiry").Changed, cmd.Flag("stateful").Changed, cmd.Flag("volumes").Changed)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
@@ -55,5 +61,8 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// backupCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	snapshotCmd.Flags().BoolP("noexpiry", "n", false, "No expiry date for the snapshot")
+	snapshotCmd.Flags().BoolP("stateful", "s", false, "Stateful snapshot, if supported")
+	snapshotCmd.Flags().BoolP("volumes", "v", false, "Snapshot volumes")
+
 }
