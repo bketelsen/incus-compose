@@ -51,10 +51,10 @@ func (app *Compose) Up() error {
 	return nil
 }
 
-func (app *Compose) Stop(stateful, force bool) error {
+func (app *Compose) Stop(stateful, force bool, timeout int) error {
 	for _, service := range app.Order(false) {
 
-		err := app.StopContainerForService(service, stateful, force)
+		err := app.StopContainerForService(service, stateful, force, timeout)
 		if err != nil {
 			if strings.Contains(err.Error(), "already stopped") {
 				slog.Info("Instance already stopped", slog.String("instance", service))
@@ -67,6 +67,52 @@ func (app *Compose) Stop(stateful, force bool) error {
 	return nil
 }
 
+func (app *Compose) Down(force, volumes bool, timeout int) error {
+	for _, service := range app.Order(false) {
+
+		err := app.StopContainerForService(service, false, force, timeout)
+		if err != nil {
+			if strings.Contains(err.Error(), "already stopped") {
+				slog.Info("Instance already stopped", slog.String("instance", service))
+			} else {
+				return err
+			}
+		}
+		err = app.RemoveContainerForService(service)
+		if err != nil {
+			return err
+		}
+		if volumes {
+			err = app.DeleteVolumesForService(service)
+			if err != nil {
+				return err
+			}
+		} else {
+			vols, err := app.ListVolumesForService(service)
+			if err != nil {
+				return err
+			}
+			if len(vols) > 0 {
+				for _, vol := range vols {
+					slog.Warn("Volume not deleted", slog.String("instance", service), slog.String("volume", fmt.Sprintf("%v", vol)))
+				}
+			}
+		}
+
+		needsProfile, err := app.ServiceNeedsInitProfile(service)
+		if err != nil {
+			return err
+		}
+		if needsProfile {
+			err = app.DeleteCloudProfileForService(service)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
+}
 func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
 	for _, service := range app.Order(false) {
 		slog.Info("Instance snapshot start", slog.String("instance", service))
@@ -145,20 +191,34 @@ func (app *Compose) Restart() error {
 	return nil
 }
 
-func (app *Compose) Remove() error {
+func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 	for _, service := range app.Order(false) {
 
-		err := app.StopContainerForService(service, false, true)
-		if err != nil {
-			slog.Error("Incus error", slog.String("message", err.Error()))
+		if stop {
+			err := app.StopContainerForService(service, false, true, timeout)
+			if err != nil {
+				if strings.Contains(err.Error(), "already stopped") {
+					slog.Info("Instance already stopped", slog.String("instance", service))
+				} else {
+					return err
+				}
+			}
 		}
-		err = app.RemoveContainerForService(service)
+		err := app.RemoveContainerForService(service)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "running") {
+				slog.Error("Instance currently running", slog.String("instance", service))
+				slog.Error("Stop it first or use --force", slog.String("instance", service))
+				return err
+			} else {
+				return err
+			}
 		}
-		err = app.DeleteVolumesForService(service)
-		if err != nil {
-			return err
+		if volumes {
+			err = app.DeleteVolumesForService(service)
+			if err != nil {
+				return err
+			}
 		}
 		needsProfile, err := app.ServiceNeedsInitProfile(service)
 		if err != nil {

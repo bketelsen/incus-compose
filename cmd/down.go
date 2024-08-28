@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 )
@@ -31,27 +32,25 @@ import (
 var downCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Stop and remove instances",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Long: `Stop and remove instances
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Optionally remove custom storage volumes declared in the compose file, with the --volumes flag.
+`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("down called")
+		slog.Info("Down", slog.String("app", app.Name))
+
+		//	incus.Execute(context.Background(), []string{"ls"})
+		err := app.Down(cmd.Flag("force").Changed, cmd.Flag("volumes").Changed, timeout)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(downCmd)
+	downCmd.Flags().BoolP("force", "f", false, "Don't ask for confirmation before removing instances")
+	downCmd.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the 'volumes' section of the compose file")
+	downCmd.Flags().IntVarP(&timeout, "timeout", "t", -1, "Specify a shutdown timeout in seconds")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// downCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// downCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

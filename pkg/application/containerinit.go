@@ -41,7 +41,7 @@ func (app *Compose) CreateCloudProfileForService(service string) (string, error)
 	}
 
 	if needsProfile {
-		slog.Info("Creating cloud profile", slog.String("instance", service), slog.String("profile", name))
+		slog.Info("Creating custom cloud-init profile", slog.String("instance", service), slog.String("profile", name))
 
 		client, err := client.NewIncusClient()
 		if err != nil {
@@ -89,7 +89,7 @@ func (app *Compose) DeleteCloudProfileForService(service string) error {
 	if err != nil {
 		return err
 	}
-	slog.Info("Deleting cloud profile", slog.String("instance", service), slog.String("profile", name))
+	slog.Info("Deleting custom cloud-init profile", slog.String("instance", service), slog.String("profile", name))
 
 	client, err := client.NewIncusClient()
 	if err != nil {
