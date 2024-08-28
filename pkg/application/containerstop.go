@@ -7,7 +7,7 @@ import (
 	"github.com/bketelsen/incus-compose/pkg/incus/client"
 )
 
-func (app *Compose) StopContainerForService(service string, stateful, force bool) error {
+func (app *Compose) StopContainerForService(service string, stateful, force bool, timeout int) error {
 	slog.Info("Stopping", slog.String("instance", service))
 
 	_, ok := app.Services[service]
@@ -20,6 +20,6 @@ func (app *Compose) StopContainerForService(service string, stateful, force bool
 		return err
 	}
 	client.WithProject(app.GetProject())
-	return client.InstanceAction("stop", service, stateful, force)
+	return client.InstanceAction("stop", service, stateful, force, timeout)
 
 }

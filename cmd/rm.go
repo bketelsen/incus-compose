@@ -33,18 +33,17 @@ var rmCmd = &cobra.Command{
 	Args: cobra.MaximumNArgs(1),
 
 	Short: "Remove stopped instances",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `Remove stopped instances
+	
+Remove stopped instances declared in the compose file. By default, volumes
+declared in the compose file are not removed. You can override this with the
+--volumes flag.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		slog.Info("Removing", slog.String("app", app.Name))
 
 		//	incus.Execute(context.Background(), []string{"ls"})
-		err := app.Remove()
+		err := app.Remove(timeout, cmd.Flag("force").Changed, cmd.Flag("stop").Changed, cmd.Flag("volumes").Changed)
 		if err != nil {
 			slog.Error("Remove", slog.String("error", err.Error()))
 		}
@@ -63,4 +62,8 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// rmCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rmCmd.Flags().BoolP("force", "f", false, "Don't ask for confirmation before removing instances")
+	rmCmd.Flags().BoolP("stop", "s", false, "Stop the instances, if required, before removing")
+	rmCmd.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the compose file")
+	rmCmd.Flags().IntP("timeout", "t", 0, "Specify a shutdown timeout in seconds")
 }

@@ -43,7 +43,7 @@ to quickly create a Cobra application.`,
 		slog.Info("Stop", slog.String("app", app.Name))
 
 		//	incus.Execute(context.Background(), []string{"ls"})
-		err := app.Stop(cmd.Flag("stateful").Changed, cmd.Flag("force").Changed)
+		err := app.Stop(cmd.Flag("stateful").Changed, cmd.Flag("force").Changed, timeout)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -64,5 +64,6 @@ func init() {
 	// stopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	stopCmd.Flags().BoolP("stateful", "s", false, "Stop stateful instance, if supported")
 	stopCmd.Flags().BoolP("force", "f", false, "Force stop instance")
+	stopCmd.Flags().IntVarP(&timeout, "timeout", "t", -1, "Specify a shutdown timeout in seconds")
 
 }

@@ -34,7 +34,7 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 		return err
 	}
 	client.WithProject(app.GetProject())
-	err = client.InstanceAction("start", service, false, false)
+	err = client.InstanceAction("start", service, false, false, -1)
 	if err != nil {
 		return err
 	}
@@ -75,6 +75,6 @@ func (app *Compose) RestartContainerForService(service string) error {
 		return err
 	}
 	client.WithProject(app.GetProject())
-	return client.InstanceAction("restart", service, false, false)
+	return client.InstanceAction("restart", service, false, false, -1)
 
 }

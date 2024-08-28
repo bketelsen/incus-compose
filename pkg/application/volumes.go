@@ -26,6 +26,19 @@ func (app *Compose) CreateVolumesForService(service string) error {
 
 	return nil
 }
+func (app *Compose) ListVolumesForService(service string) ([]string, error) {
+	slog.Info("Getting Volumes", slog.String("instance", service))
+	svc, ok := app.Services[service]
+	if !ok {
+		return []string{}, fmt.Errorf("service %s not found", service)
+	}
+	volumes := []string{}
+	for volName, vol := range svc.Volumes {
+		volumes = append(volumes, vol.Name(app.Name, service, volName)+" (pool: "+vol.Pool+")")
+	}
+
+	return volumes, nil
+}
 
 func (app *Compose) DeleteVolumesForService(service string) error {
 	slog.Info("Deleting Volumes", slog.String("instance", service))

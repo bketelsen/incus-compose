@@ -40,6 +40,7 @@ var cfgFile string
 var debug bool
 var app application.Compose
 var logLevel = new(slog.LevelVar) // Info by default
+var timeout int
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

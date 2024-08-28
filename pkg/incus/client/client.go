@@ -52,42 +52,6 @@ func (i *IncusClient) GetInstanceState(name string) (*api.InstanceState, string,
 	return i.client.GetInstanceState(name)
 }
 
-func (i *IncusClient) StartInstance(name string) error {
-
-	action := "start"
-	state := false
-	if action == "start" {
-		current, _, err := i.client.GetInstance(name)
-		if err != nil {
-			return err
-		}
-
-		// "start" for a frozen instance means "unfreeze"
-		if current.StatusCode == api.Frozen {
-			action = "unfreeze"
-		}
-
-		// Always restore state (if present) unless asked not to
-		if action == "start" && current.Stateful {
-			state = true
-		}
-	}
-
-	req := api.InstanceStatePut{
-		Action:  action,
-		Timeout: 10,
-
-		Stateful: state,
-	}
-
-	op, err := i.client.UpdateInstanceState(name, req, "")
-	if err != nil {
-		return err
-	}
-	return op.Wait()
-
-}
-
 func (i *IncusClient) CreateProfile(name string, data api.ProfilePut) error {
 	// Create the profile
 	profile := api.ProfilesPost{}
@@ -303,7 +267,7 @@ func (i *IncusClient) ExportVolume(pool, volume, targetName string) error {
 // valid actions are: start, stop, pause, resume
 // stateful is used to indicate that the instance should be stopped in a stateful way
 // force is used to indicate that the instance should be stopped forcefully
-func (i *IncusClient) InstanceAction(action, instance string, stateful, force bool) error {
+func (i *IncusClient) InstanceAction(action, instance string, stateful, force bool, timeout int) error {
 	state := false
 
 	// Pause is called freeze
@@ -352,4 +316,13 @@ func (i *IncusClient) InstanceAction(action, instance string, stateful, force bo
 
 	return op.Wait()
 
+}
+
+func (i *IncusClient) DeleteInstance(instance string) error {
+	op, err := i.client.DeleteInstance(instance)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
 }
