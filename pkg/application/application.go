@@ -72,11 +72,11 @@ func Load(workdir, path string) (Compose, error) {
 	}
 	g := graph.New(graph.StringHash, graph.Directed(), graph.Acyclic())
 	for name := range app.Services {
-		g.AddVertex(name)
+		_ = g.AddVertex(name)
 	}
 	for name := range app.Services {
 		for _, dep := range app.Services[name].DependsOn {
-			g.AddEdge(name, dep)
+			_ = g.AddEdge(name, dep)
 		}
 	}
 	app.dag = g

@@ -250,9 +250,15 @@ func (app *Compose) Inventory() error {
 	defer f.Close()
 
 	tmpl := Create("default", defaultTemplate)
-	tmpl.Execute(f, defaultList)
+	err = tmpl.Execute(f, defaultList)
+	if err != nil {
+		return err
+	}
 	tmpl2 := Create("group", group)
-	tmpl2.Execute(f, inventory)
+	err = tmpl2.Execute(f, inventory)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

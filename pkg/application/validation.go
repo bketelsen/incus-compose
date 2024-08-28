@@ -11,9 +11,9 @@ import (
 
 func init() {
 	validate = validator.New(validator.WithRequiredStructEnabled())
-	validate.RegisterValidation("project-exists", ProjectExists)
-	validate.RegisterValidation("profile-exists", ProfileExists)
-	validate.RegisterValidation("pool-exists", PoolExists)
+	_ = validate.RegisterValidation("project-exists", ProjectExists)
+	_ = validate.RegisterValidation("profile-exists", ProfileExists)
+	_ = validate.RegisterValidation("pool-exists", PoolExists)
 
 }
 
