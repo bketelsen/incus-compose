@@ -30,7 +30,7 @@ jobs:
           # either 'goreleaser' (default) or 'goreleaser-pro':
           distribution: goreleaser-pro
           version: nightly
-          args: release --clean --nightly --snapshot
+          args: release --clean --nightly
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
