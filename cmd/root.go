@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bketelsen/incus-compose/pkg/application"
+	"github.com/bketelsen/incus-compose/pkg/build"
 	"github.com/go-playground/validator/v10"
 
 	"github.com/lmittmann/tint"
@@ -54,6 +55,7 @@ examples and usage of using your application. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
+	Version: build.Version,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
