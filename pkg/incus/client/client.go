@@ -30,31 +30,25 @@ func NewIncusClient() (*IncusClient, error) {
 }
 
 func (i *IncusClient) WithProject(project string) {
-
 	i.client = i.client.UseProject(project)
 }
 
 func (i *IncusClient) GetProjectNames() ([]string, error) {
-
 	return i.client.GetProjectNames()
 }
 
 func (i *IncusClient) GetProfileNames() ([]string, error) {
-
 	return i.client.GetProfileNames()
 }
 
 func (i *IncusClient) GetStoragePoolNames() ([]string, error) {
-
 	return i.client.GetStoragePoolNames()
 }
 
 func (i *IncusClient) GetInstance(name string) (*api.Instance, string, error) {
-
 	return i.client.GetInstance(name)
 }
 func (i *IncusClient) GetInstanceState(name string) (*api.InstanceState, string, error) {
-
 	return i.client.GetInstanceState(name)
 }
 
@@ -303,4 +297,59 @@ func (i *IncusClient) ExportVolume(pool, volume, targetName string) error {
 	}
 
 	return nil
+}
+
+// InstanceAction performs an action on an instance
+// valid actions are: start, stop, pause, resume
+// stateful is used to indicate that the instance should be stopped in a stateful way
+// force is used to indicate that the instance should be stopped forcefully
+func (i *IncusClient) InstanceAction(action, instance string, stateful, force bool) error {
+	state := false
+
+	// Pause is called freeze
+	if action == "pause" {
+		action = "freeze"
+	}
+
+	// Resume is called unfreeze
+	if action == "resume" {
+		action = "unfreeze"
+	}
+
+	// Only store state if asked to
+	if action == "stop" && stateful {
+		state = true
+	}
+
+	if action == "start" {
+		current, _, err := i.client.GetInstance(instance)
+		if err != nil {
+			return err
+		}
+
+		// "start" for a frozen instance means "unfreeze"
+		if current.StatusCode == api.Frozen {
+			action = "unfreeze"
+		}
+
+		// Always restore state (if present) unless asked not to
+		if action == "start" && current.Stateful && stateful {
+			state = true
+		}
+	}
+
+	req := api.InstanceStatePut{
+		Action:   action,
+		Timeout:  20, // TODO: make this configurable
+		Force:    force,
+		Stateful: state,
+	}
+
+	op, err := i.client.UpdateInstanceState(instance, req, "")
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+
 }

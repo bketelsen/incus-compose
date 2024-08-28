@@ -44,7 +44,7 @@ to quickly create a Cobra application.`,
 		slog.Info("Starting", slog.String("app", app.Name))
 
 		//	incus.Execute(context.Background(), []string{"ls"})
-		err := app.Start()
+		err := app.Start(false)
 		if err != nil {
 			slog.Error("Start", slog.String("error", err.Error()))
 		}
