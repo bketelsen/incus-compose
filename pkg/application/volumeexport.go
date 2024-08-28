@@ -15,11 +15,9 @@ func (app *Compose) ExportVolume(pool, volume string) error {
 	client, err := client.NewIncusClient()
 	if err != nil {
 		slog.Error(err.Error())
-
 		return err
-
 	}
-
+	client.WithProject(app.GetProject())
 	// make sure app.ExportPath exists
 	if err := os.MkdirAll(app.ExportPath, 0755); err != nil {
 		return err

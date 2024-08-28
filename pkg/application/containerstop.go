@@ -1,31 +1,25 @@
 package application
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 
-	"github.com/bketelsen/incus-compose/pkg/incus"
+	"github.com/bketelsen/incus-compose/pkg/incus/client"
 )
 
-func (app *Compose) StopContainerForService(service string) error {
+func (app *Compose) StopContainerForService(service string, stateful, force bool) error {
 	slog.Info("Stopping", slog.String("instance", service))
 
 	_, ok := app.Services[service]
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
-	args := []string{"stop", service}
-	args = append(args, "--project", app.GetProject())
-
-	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
-
-	out, err := incus.ExecuteShellStream(context.Background(), args)
+	client, err := client.NewIncusClient()
 	if err != nil {
-		slog.Error("Incus error", slog.String("message", out))
+		slog.Error(err.Error())
 		return err
 	}
-	slog.Debug("Incus ", slog.String("message", out))
-	return nil
+	client.WithProject(app.GetProject())
+	return client.InstanceAction("stop", service, stateful, force)
 
 }

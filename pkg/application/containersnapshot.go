@@ -13,9 +13,9 @@ func (app *Compose) SnapshotInstance(service string, noexpiry, stateful, volumes
 	client, err := client.NewIncusClient()
 	if err != nil {
 		slog.Error(err.Error())
-
 		return err
 	}
+	client.WithProject(app.GetProject())
 	return client.SnapshotInstance(service, snapshotName(service), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
 
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/bketelsen/incus-compose/pkg/incus/client"
@@ -37,21 +38,29 @@ func (app *Compose) Up() error {
 			return err
 		}
 
-		err = app.StartContainerForService(service)
+		err = app.StartContainerForService(service, true)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "already running") {
+				slog.Info("Instance already running", slog.String("instance", service))
+			} else {
+				return err
+			}
 		}
 
 	}
 	return nil
 }
 
-func (app *Compose) Stop() error {
+func (app *Compose) Stop(stateful, force bool) error {
 	for _, service := range app.Order(false) {
 
-		err := app.StopContainerForService(service)
+		err := app.StopContainerForService(service, stateful, force)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "already stopped") {
+				slog.Info("Instance already stopped", slog.String("instance", service))
+			} else {
+				return err
+			}
 		}
 
 	}
@@ -108,12 +117,16 @@ func (app *Compose) Export(volumes bool, customVolumesOnly bool) error {
 	return nil
 }
 
-func (app *Compose) Start() error {
+func (app *Compose) Start(wait bool) error {
 	for _, service := range app.Order(true) {
 
-		err := app.StartContainerForService(service)
+		err := app.StartContainerForService(service, wait)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "already running") {
+				slog.Info("Instance already running", slog.String("instance", service))
+			} else {
+				return err
+			}
 		}
 
 	}
@@ -135,7 +148,7 @@ func (app *Compose) Restart() error {
 func (app *Compose) Remove() error {
 	for _, service := range app.Order(false) {
 
-		err := app.StopContainerForService(service)
+		err := app.StopContainerForService(service, false, true)
 		if err != nil {
 			slog.Error("Incus error", slog.String("message", err.Error()))
 		}
@@ -173,6 +186,7 @@ func (app *Compose) Info() error {
 
 			return err
 		}
+		client.WithProject(app.GetProject())
 		i, _, err := client.GetInstance(service)
 		if err != nil {
 			slog.Error(err.Error())

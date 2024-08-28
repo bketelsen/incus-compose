@@ -12,9 +12,9 @@ func (app *Compose) SnapshotVolume(pool, volume string, noexpiry, stateful, volu
 	client, err := client.NewIncusClient()
 	if err != nil {
 		slog.Error(err.Error())
-
 		return err
 	}
+	client.WithProject(app.GetProject())
 	return client.SnapshotVolume(pool, volume, snapshotName(volume), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
 
 }
