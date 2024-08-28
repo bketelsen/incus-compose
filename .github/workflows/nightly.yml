@@ -1,38 +1,29 @@
-name: Nightly Builds
+# .github/workflows/nightly.yml
+name: goreleaser-nightly
 
 on:
-  push:
-    branches:
-      - 'main'
+  workflow_dispatch:
 
 permissions:
   contents: write
-  # packages: write
-  # issues: write
+  packages: write
 
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - run: git fetch --force --tags
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v2
         with:
-          go-version: '>=1.23'
-          cache: true
-
-      # More assembly might be required: Docker logins, GPG, etc. It all depends
-      # on your needs.
-      - uses: goreleaser/goreleaser-action@v6
+          go-version: 1.23
+      - uses: goreleaser/goreleaser-action@v3
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro':
           distribution: goreleaser-pro
-          version: nightly
+          version: latest
           args: release --clean --nightly
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
-          # distribution:
+          # Your GoReleaser Pro key:
           GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
