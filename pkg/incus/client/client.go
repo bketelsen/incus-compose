@@ -397,7 +397,7 @@ func (i *IncusClient) AttachStorageVolume(pool string, name string, service stri
 	return op.Wait()
 }
 
-func (i *IncusClient) ShowStorageVolume(pool string, name string) error {
+func (i *IncusClient) ShowStorageVolume(pool string, name string) (*api.StorageVolume, error) {
 	// Parse the input
 	volName, volType := parseVolume("custom", name)
 
@@ -407,25 +407,18 @@ func (i *IncusClient) ShowStorageVolume(pool string, name string) error {
 		// Give more context on missing volumes.
 		if api.StatusErrorCheck(err, http.StatusNotFound) {
 			if volType == "custom" {
-				return fmt.Errorf("Storage pool volume \"%s/%s\" not found. Try virtual-machine or container for type", volType, volName)
+				return nil, fmt.Errorf("Storage pool volume \"%s/%s\" not found. Try virtual-machine or container for type", volType, volName)
 			}
 
-			return fmt.Errorf("Storage pool volume \"%s/%s\" not found", volType, volName)
+			return nil, fmt.Errorf("Storage pool volume \"%s/%s\" not found", volType, volName)
 		}
 
-		return err
+		return nil, err
 	}
 
 	sort.Strings(vol.UsedBy)
 
-	data, err := yaml.Marshal(&vol)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%s", data)
-
-	return nil
+	return vol, nil
 }
 
 func (i *IncusClient) DeleteStoragePoolVolume(pool string, name string) error {
