@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	incus "github.com/lxc/incus/client"
 	"github.com/lxc/incus/shared/api"
 )
