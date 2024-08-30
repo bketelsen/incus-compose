@@ -175,9 +175,11 @@ func (app *Compose) ShowVolumesForService(service string) error {
 		}
 		client.WithProject(app.GetProject())
 
-		if err := client.ShowStorageVolume(vol.Pool, vol.Name(app.Name, service, volName)); err != nil {
+		vol, err := client.ShowStorageVolume(vol.Pool, vol.Name(app.Name, service, volName))
+		if err != nil {
 			slog.Error(err.Error())
 		}
+		fmt.Println(vol)
 
 		return nil
 	}
