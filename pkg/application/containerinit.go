@@ -249,7 +249,7 @@ func (app *Compose) InitContainerForService(service string) error {
 
 			network, _, err := client.GetNetwork(net)
 			if err != nil {
-				return fmt.Errorf("Failed loading network %q: %w", net, err)
+				return fmt.Errorf("failed loading network %q: %w", net, err)
 			}
 
 			// Prepare the instance's NIC device entry.
@@ -292,7 +292,7 @@ func (app *Compose) InitContainerForService(service string) error {
 	if storageOverride != "" {
 		_, _, err := client.GetStoragePool(storageOverride)
 		if err != nil {
-			return fmt.Errorf("Failed loading storage pool %q: %w", storageOverride, err)
+			return fmt.Errorf("failed loading storage pool %q: %w", storageOverride, err)
 		}
 
 		devicesMap["root"] = map[string]string{
