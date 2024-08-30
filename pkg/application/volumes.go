@@ -1,11 +1,10 @@
 package application
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 
-	"github.com/bketelsen/incus-compose/pkg/incus"
+	"github.com/bketelsen/incus-compose/pkg/incus/client"
 )
 
 func (app *Compose) CreateVolumesForService(service string) error {
@@ -26,6 +25,7 @@ func (app *Compose) CreateVolumesForService(service string) error {
 
 	return nil
 }
+
 func (app *Compose) ListVolumesForService(service string) ([]string, error) {
 	slog.Info("Getting Volumes", slog.String("instance", service))
 	svc, ok := app.Services[service]
@@ -83,23 +83,33 @@ func (app *Compose) createVolume(name string, vol Volume, snapshot Snapshot) err
 
 	args := []string{"storage", "volume", "create", vol.Pool, name}
 	args = append(args, "--project", app.GetProject())
+
+	snapargs := make(map[string]string)
+
 	if snapshot.Schedule != "" {
 		args = append(args, "snapshots.schedule="+"\""+snapshot.Schedule+"\"")
+		snapargs["snapshots.schedule"] = snapshot.Schedule
 	}
 	if snapshot.Pattern != "" {
 		args = append(args, "snapshots.pattern="+"\""+snapshot.Pattern+"\"")
+		snapargs["snapshots.pattern"] = snapshot.Pattern
 	}
 	if snapshot.Expiry != "" {
 		args = append(args, "snapshots.expiry="+"\""+snapshot.Expiry+"\"")
+		snapargs["snapshots.expiry"] = snapshot.Expiry
 	}
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
-	out, err := incus.ExecuteShell(context.Background(), args)
+	client, err := client.NewIncusClient()
 	if err != nil {
-		slog.Error("Incus error", slog.String("message", out))
-		return err
+		slog.Error(err.Error())
 	}
-	slog.Debug("Incus ", slog.String("message", out))
+	client.WithProject(app.GetProject())
+
+	if err := client.CreateStorageVolume(vol.Pool, name, snapargs); err != nil {
+		slog.Error(err.Error())
+	}
+
 	return nil
 }
 
@@ -111,14 +121,19 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
-	out, err := incus.ExecuteShell(context.Background(), args)
+	client, err := client.NewIncusClient()
 	if err != nil {
-		slog.Error("Incus error", slog.String("message", out))
-		return err
+		slog.Error(err.Error())
 	}
-	slog.Debug("Incus ", slog.String("message", out))
+	client.WithProject(app.GetProject())
+
+	if err := client.DeleteStoragePoolVolume(vol.Pool, name); err != nil {
+		slog.Error(err.Error())
+	}
+
 	return nil
 }
+
 func (app *Compose) attachVolume(name string, service string, vol Volume) error {
 	slog.Info("Attaching Volume", slog.String("volume", name))
 
@@ -127,12 +142,16 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
-	out, err := incus.ExecuteShell(context.Background(), args)
+	client, err := client.NewIncusClient()
 	if err != nil {
-		slog.Error("Incus error", slog.String("message", out))
-		return err
+		slog.Error(err.Error())
 	}
-	slog.Debug("Incus ", slog.String("message", out))
+	client.WithProject(app.GetProject())
+
+	if err := client.AttachStorageVolume(vol.Pool, name, service, vol.Mountpoint); err != nil {
+		slog.Error(err.Error())
+	}
+
 	return nil
 }
 
@@ -149,15 +168,20 @@ func (app *Compose) ShowVolumesForService(service string) error {
 		args = append(args, "--project", app.GetProject())
 
 		slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
-		out, err := incus.ExecuteShellStream(context.Background(), args)
+
+		client, err := client.NewIncusClient()
 		if err != nil {
-			slog.Error("Incus error", slog.String("message", out))
-			return err
+			slog.Error(err.Error())
 		}
+		client.WithProject(app.GetProject())
+
+		if err := client.ShowStorageVolume(vol.Pool, vol.Name(app.Name, service, volName)); err != nil {
+			slog.Error(err.Error())
+		}
+
 		return nil
 	}
 	return nil
-
 }
 
 func (v *Volume) Name(application string, service string, volume string) string {

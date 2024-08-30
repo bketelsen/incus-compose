@@ -4,9 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"slices"
+	"sort"
+	"strings"
 	"time"
 
 	incus "github.com/lxc/incus/client"
@@ -325,4 +329,112 @@ func (i *IncusClient) DeleteInstance(instance string) error {
 	}
 
 	return op.Wait()
+}
+
+func (i *IncusClient) CreateStorageVolume(pool string, name string, args map[string]string) error {
+	// Parse the input
+	volName, volType := parseVolume("custom", name)
+
+	var volumePut api.StorageVolumePut
+
+	// Create the storage volume entry
+	vol := api.StorageVolumesPost{
+		Name:             volName,
+		Type:             volType,
+		ContentType:      "filesystem",
+		StorageVolumePut: volumePut,
+	}
+
+	if volumePut.Config == nil {
+		vol.Config = map[string]string{}
+	}
+
+	for k, v := range args {
+		vol.Config[k] = v
+	}
+
+	err := i.client.CreateStoragePoolVolume(pool, vol)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *IncusClient) AttachStorageVolume(pool string, name string, service string, mountpoint string) error {
+	instance, etag, err := i.client.GetInstance(service)
+	if err != nil {
+		return err
+	}
+
+	volName, volType := parseVolume("custom", name)
+	if volType != "custom" {
+		return fmt.Errorf("Only \"custom\" volumes can be attached to instances")
+	}
+
+	// Prepare the instance's device entry
+	dev := map[string]string{
+		"type":   "disk",
+		"pool":   pool,
+		"source": volName,
+		"path":   mountpoint,
+	}
+
+	// Check if device exists
+	_, ok := instance.Devices[name]
+	if ok {
+		return fmt.Errorf("Device already exists: %s", name)
+	}
+	instance.Devices[name] = dev
+
+	op, err := i.client.UpdateInstance(service, instance.Writable(), etag)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+}
+
+func (i *IncusClient) ShowStorageVolume(pool string, name string) (*api.StorageVolume, error) {
+	// Parse the input
+	volName, volType := parseVolume("custom", name)
+
+	// Get the storage volume entry
+	vol, _, err := i.client.GetStoragePoolVolume(pool, volType, volName)
+	if err != nil {
+		// Give more context on missing volumes.
+		if api.StatusErrorCheck(err, http.StatusNotFound) {
+			if volType == "custom" {
+				return nil, fmt.Errorf("Storage pool volume \"%s/%s\" not found. Try virtual-machine or container for type", volType, volName)
+			}
+
+			return nil, fmt.Errorf("Storage pool volume \"%s/%s\" not found", volType, volName)
+		}
+
+		return nil, err
+	}
+
+	sort.Strings(vol.UsedBy)
+
+	return vol, nil
+}
+
+func (i *IncusClient) DeleteStoragePoolVolume(pool string, name string) error {
+	volName, volType := parseVolume("custom", name)
+
+	if err := i.client.DeleteStoragePoolVolume(pool, volType, volName); err != nil {
+		return err
+	}
+	return nil
+}
+
+func parseVolume(defaultType string, name string) (string, string) {
+	parsedName := strings.SplitN(name, "/", 2)
+	if len(parsedName) == 1 {
+		return parsedName[0], defaultType
+	} else if len(parsedName) == 2 && !slices.Contains([]string{"custom", "image", "container", "virtual-machine"}, parsedName[0]) {
+		return name, defaultType
+	}
+
+	return parsedName[1], parsedName[0]
 }
