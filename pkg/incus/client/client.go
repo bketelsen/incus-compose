@@ -9,8 +9,8 @@ import (
 	"path"
 	"time"
 
-	incus "github.com/lxc/incus/client"
-	"github.com/lxc/incus/shared/api"
+	incus "github.com/lxc/incus/v6/client"
+	"github.com/lxc/incus/v6/shared/api"
 )
 
 type IncusClient struct {
@@ -29,6 +29,9 @@ func NewIncusClient() (*IncusClient, error) {
 	return &IncusClient{client: c}, nil
 }
 
+func (i *IncusClient) Client() incus.InstanceServer {
+	return i.client
+}
 func (i *IncusClient) WithProject(project string) {
 	i.client = i.client.UseProject(project)
 }
@@ -50,6 +53,16 @@ func (i *IncusClient) GetInstance(name string) (*api.Instance, string, error) {
 }
 func (i *IncusClient) GetInstanceState(name string) (*api.InstanceState, string, error) {
 	return i.client.GetInstanceState(name)
+}
+
+func (i *IncusClient) GetNetwork(name string) (*api.Network, string, error) {
+	return i.client.GetNetwork(name)
+}
+func (i *IncusClient) GetStoragePool(name string) (*api.StoragePool, string, error) {
+	return i.client.GetStoragePool(name)
+}
+func (i *IncusClient) HasExtension(name string) bool {
+	return i.client.HasExtension(name)
 }
 
 func (i *IncusClient) CreateProfile(name string, data api.ProfilePut) error {

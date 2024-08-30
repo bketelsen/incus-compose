@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/spf13/cobra"
@@ -46,6 +47,16 @@ to quickly create a Cobra application.`,
 		err := app.Info()
 		if err != nil {
 			slog.Error("Info", slog.String("error", err.Error()))
+		}
+		fmt.Println(app.ListServices())
+		fmt.Println(app.DependentsForService("drone-agent"))
+		err = app.StopAll(false, false, -1)
+		if err != nil {
+			slog.Error("Stop", slog.String("error", err.Error()))
+		}
+		err = app.StartAll(true)
+		if err != nil {
+			slog.Error("Start", slog.String("error", err.Error()))
 		}
 	},
 }

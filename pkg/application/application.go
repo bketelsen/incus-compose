@@ -5,33 +5,39 @@ import (
 	"os"
 	"slices"
 
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
+	config "github.com/lxc/incus/v6/shared/cliconfig"
 	"gopkg.in/yaml.v3"
 )
 
 var defaultNames = []string{"incus-compose.yaml", "incus-compose.yml"}
 
 type Compose struct {
-	Name       string                      `yaml:"name" validate:"required"`
-	Project    string                      `yaml:"project,omitempty" validate:"project-exists"`
-	Services   map[string]Service          `yaml:"services" validate:"required,dive,required"`
-	Profiles   []string                    `yaml:"profiles" validate:"dive,profile-exists"`
-	ExportPath string                      `yaml:"export_path,omitempty"`
-	dag        graph.Graph[string, string] `yaml:"-"`
+	Name           string                      `yaml:"name" validate:"required"`
+	Project        string                      `yaml:"project,omitempty" validate:"project-exists"`
+	Services       map[string]Service          `yaml:"services" validate:"required,dive,required"`
+	Profiles       []string                    `yaml:"profiles" validate:"dive,profile-exists"`
+	ExportPath     string                      `yaml:"export_path,omitempty"`
+	Dag            graph.Graph[string, string] `yaml:"-"`
+	ComposeProject *types.Project              `yaml:"-"`
+	config         *config.Config
 }
 
 type Service struct {
-	Image                 string            `yaml:"image" validate:"required"`
-	GPU                   bool              `yaml:"gpu,omitempty"`
-	Volumes               map[string]Volume `yaml:"volumes,omitempty" validate:"dive,required"`
-	BindMounts            map[string]Bind   `yaml:"binds,omitempty"`
-	AdditionalProfiles    []string          `yaml:"additional_profiles,omitempty" validate:"dive,profile-exists"`
-	EnvironmentFile       string            `yaml:"environment_file,omitempty"`
-	CloudInitUserData     string            `yaml:"cloud_init_user_data,omitempty"`
-	CloudInitUserDataFile string            `yaml:"cloud_init_user_data_file,omitempty"`
-	Snapshot              Snapshot          `yaml:"snapshot,omitempty"`
-	DependsOn             []string          `yaml:"depends_on,omitempty"`
-	InventoryGroups       []string          `yaml:"inventory_groups,omitempty"`
+	Image                 string             `yaml:"image" validate:"required"`
+	GPU                   bool               `yaml:"gpu,omitempty"`
+	Volumes               map[string]*Volume `yaml:"volumes,omitempty" validate:"dive,required"`
+	BindMounts            map[string]Bind    `yaml:"binds,omitempty"`
+	AdditionalProfiles    []string           `yaml:"additional_profiles,omitempty" validate:"dive,profile-exists"`
+	EnvironmentFile       string             `yaml:"environment_file,omitempty"`
+	Environment           map[string]*string `yaml:"environment,omitempty"`
+	CloudInitUserData     string             `yaml:"cloud_init_user_data,omitempty"`
+	CloudInitUserDataFile string             `yaml:"cloud_init_user_data_file,omitempty"`
+	Snapshot              *Snapshot          `yaml:"snapshot,omitempty"`
+	DependsOn             []string           `yaml:"depends_on,omitempty"`
+	InventoryGroups       []string           `yaml:"inventory_groups,omitempty"`
+	Storage               string             `yaml:"storage,omitempty"`
 }
 
 type Snapshot struct {
@@ -41,9 +47,9 @@ type Snapshot struct {
 }
 
 type Volume struct {
-	Mountpoint string   `yaml:"mountpoint"`
-	Pool       string   `yaml:"pool" validate:"pool-exists"`
-	Snapshot   Snapshot `yaml:"snapshot,omitempty"`
+	Mountpoint string    `yaml:"mountpoint"`
+	Pool       string    `yaml:"pool" validate:"pool-exists"`
+	Snapshot   *Snapshot `yaml:"snapshot,omitempty"`
 }
 
 type Bind struct {
@@ -79,7 +85,7 @@ func Load(workdir, path string) (Compose, error) {
 			_ = g.AddEdge(name, dep)
 		}
 	}
-	app.dag = g
+	app.Dag = g
 
 	err = app.Validate()
 	if err != nil {
@@ -120,13 +126,13 @@ func Generate(path string) error {
 	bind.Target = "/media"
 	bind.Shift = true
 
-	service.Volumes = map[string]Volume{
-		"metadatavolume": volume,
+	service.Volumes = map[string]*Volume{
+		"metadatavolume": &volume,
 	}
 	service.BindMounts = map[string]Bind{
 		"mediabind": bind,
 	}
-	service.Snapshot = Snapshot{
+	service.Snapshot = &Snapshot{
 		Schedule: "@daily",
 		Expiry:   "14d",
 	}
@@ -137,12 +143,12 @@ func Generate(path string) error {
 	volume2 := Volume{}
 	volume2.Mountpoint = "/data"
 	volume2.Pool = "fast"
-	volume2.Snapshot = Snapshot{
+	volume2.Snapshot = &Snapshot{
 		Schedule: "@hourly",
 		Expiry:   "7d",
 	}
-	service2.Volumes = map[string]Volume{
-		"data": volume2,
+	service2.Volumes = map[string]*Volume{
+		"data": &volume2,
 	}
 	app.Services = map[string]Service{
 		"testservice": service,
@@ -176,12 +182,16 @@ func (app *Compose) GetProfiles() []string {
 	return app.Profiles
 }
 
+func (app *Compose) SetConfig(config *config.Config) {
+	app.config = config
+}
+
 // Order returns the order in which services should be started or stopped.
 // If reverse is true, the order is reversed.
 // Use reverse=true for starting services.
 // Use reverse=false for stopping services.
 func (app *Compose) Order(reverse bool) []string {
-	order, _ := graph.TopologicalSort(app.dag)
+	order, _ := graph.TopologicalSort(app.Dag)
 	if reverse {
 		slices.Reverse(order)
 	}

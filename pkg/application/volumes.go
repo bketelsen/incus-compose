@@ -18,7 +18,7 @@ func (app *Compose) CreateVolumesForService(service string) error {
 	for volName, vol := range svc.Volumes {
 
 		slog.Debug("Volume", slog.String("name", vol.Name(app.Name, service, volName)), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
-		err := app.createVolume(vol.Name(app.Name, service, volName), vol, vol.Snapshot)
+		err := app.createVolume(vol.Name(app.Name, service, volName), *vol, *vol.Snapshot)
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func (app *Compose) DeleteVolumesForService(service string) error {
 
 		slog.Debug("Volume", slog.String("name", vol.Name(app.Name, service, volName)), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		err := app.deleteVolume(vol.Name(app.Name, service, volName), vol)
+		err := app.deleteVolume(vol.Name(app.Name, service, volName), *vol)
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ func (app *Compose) AttachVolumesForService(service string) error {
 	}
 	for volName, vol := range svc.Volumes {
 
-		err := app.attachVolume(vol.Name(app.Name, service, volName), service, vol)
+		err := app.attachVolume(vol.Name(app.Name, service, volName), service, *vol)
 		if err != nil {
 			return err
 		}

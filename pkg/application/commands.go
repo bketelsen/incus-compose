@@ -12,6 +12,7 @@ import (
 )
 
 func (app *Compose) Up() error {
+
 	for _, service := range app.Order(true) {
 
 		err := app.InitContainerForService(service)
@@ -29,10 +30,10 @@ func (app *Compose) Up() error {
 			return err
 		}
 
-		err = app.CreateGPUForService(service)
-		if err != nil {
-			return err
-		}
+		// err = app.CreateGPUForService(service)
+		// if err != nil {
+		// 	return err
+		// }
 		err = app.AttachVolumesForService(service)
 		if err != nil {
 			return err
@@ -220,16 +221,16 @@ func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 				return err
 			}
 		}
-		needsProfile, err := app.ServiceNeedsInitProfile(service)
-		if err != nil {
-			return err
-		}
-		if needsProfile {
-			err = app.DeleteCloudProfileForService(service)
-			if err != nil {
-				return err
-			}
-		}
+		// 	needsProfile, err := app.ServiceNeedsInitProfile(service)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	if needsProfile {
+		// 		err = app.DeleteCloudProfileForService(service)
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 	}
 	}
 	return nil
 }
