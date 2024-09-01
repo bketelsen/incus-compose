@@ -34,9 +34,15 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 		return err
 	}
 	client.WithProject(app.GetProject())
-	err = client.InstanceAction("start", service, false, false, -1)
-	if err != nil {
-		return err
+
+	inst, _, _ := client.GetInstance(service)
+	if inst != nil && inst.Name == service && inst.Status == "Running" {
+		slog.Info("Instance already running", slog.String("instance", service))
+	} else {
+		err = client.InstanceAction("start", service, false, false, -1)
+		if err != nil {
+			return err
+		}
 	}
 
 	if wait {

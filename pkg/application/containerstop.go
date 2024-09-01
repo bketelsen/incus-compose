@@ -20,6 +20,13 @@ func (app *Compose) StopContainerForService(service string, stateful, force bool
 		return err
 	}
 	client.WithProject(app.GetProject())
-	return client.InstanceAction("stop", service, stateful, force, timeout)
+
+	inst, _, _ := client.GetInstance(service)
+	if inst != nil && inst.Name == service && inst.Status == "Running" {
+		return client.InstanceAction("stop", service, stateful, force, timeout)
+	} else {
+		slog.Info("Instance already stopped", slog.String("instance", service))
+		return nil
+	}
 
 }
