@@ -131,7 +131,6 @@ var rootCmd = &cobra.Command{
 		conf.ProjectOverride = os.Getenv("INCUS_PROJECT")
 
 		globalPreRunHook(cmd, args)
-		fmt.Println("rootCmd PersistentPreRunE")
 		loader := configureLoader(cmd)
 		project, err = loader.LoadProject(context.Background())
 		if err != nil {
