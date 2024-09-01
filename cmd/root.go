@@ -22,15 +22,24 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/user"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/bketelsen/incus-compose/pkg/application"
 	"github.com/bketelsen/incus-compose/pkg/build"
-	"github.com/go-playground/validator/v10"
+	"github.com/bketelsen/incus-compose/pkg/compose"
+
+	dockercompose "github.com/compose-spec/compose-go/v2/types"
+	"github.com/dominikbraun/graph"
+	"github.com/lxc/incus/shared/util"
+	config "github.com/lxc/incus/v6/shared/cliconfig"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
@@ -39,14 +48,117 @@ import (
 
 var cfgFile string
 var debug bool
-var app application.Compose
+var conf *config.Config
+var confPath string
+var forceLocal bool
+
+// var app application.Compose
 var logLevel = new(slog.LevelVar) // Info by default
 var timeout int
+var dryRun bool
+var cwd string
+var project *dockercompose.Project
+var app *application.Compose
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:              "incus-compose",
-	PersistentPreRun: globalPreRunHook,
+	Use: "incus-compose",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+
+		// Figure out the config directory and config path
+		var configDir string
+		if os.Getenv("INCUS_CONF") != "" {
+			configDir = os.Getenv("INCUS_CONF")
+		} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
+			configDir = path.Join(os.Getenv("HOME"), ".config", "incus")
+		} else {
+			user, err := user.Current()
+			if err != nil {
+				return err
+			}
+
+			if util.PathExists(user.HomeDir) {
+				configDir = path.Join(user.HomeDir, ".config", "incus")
+			}
+		}
+
+		// Figure out a potential cache path.
+		var cachePath string
+		if os.Getenv("INCUS_CACHE") != "" {
+			cachePath = os.Getenv("INCUS_CACHE")
+		} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
+			cachePath = path.Join(os.Getenv("HOME"), ".cache", "incus")
+		} else {
+			currentUser, err := user.Current()
+			if err != nil {
+				return err
+			}
+
+			if util.PathExists(currentUser.HomeDir) {
+				cachePath = path.Join(currentUser.HomeDir, ".cache", "incus")
+			}
+		}
+
+		if cachePath != "" {
+			err := os.MkdirAll(cachePath, 0700)
+			if err != nil && !os.IsExist(err) {
+				cachePath = ""
+			}
+		}
+
+		// If no homedir could be found, treat as if --force-local was passed.
+		if configDir == "" {
+			forceLocal = true
+		}
+
+		confPath = os.ExpandEnv(path.Join(configDir, "config.yml"))
+
+		// Load the configuration
+		if forceLocal {
+			conf = config.NewConfig("", true)
+		} else if util.PathExists(confPath) {
+			conf, err = config.LoadConfig(confPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			conf = config.NewConfig(filepath.Dir(confPath), true)
+		}
+
+		// Set cache directory in config.
+		conf.CacheDir = cachePath
+
+		conf.ProjectOverride = os.Getenv("INCUS_PROJECT")
+
+		globalPreRunHook(cmd, args)
+		fmt.Println("rootCmd PersistentPreRunE")
+		loader := configureLoader(cmd)
+		project, err = loader.LoadProject(context.Background())
+		if err != nil {
+			return err
+		}
+		app, err = application.BuildDirect(project)
+		if err != nil {
+			return err
+		}
+		g := graph.New(graph.StringHash, graph.Directed(), graph.Acyclic())
+		for name := range app.Services {
+			_ = g.AddVertex(name)
+		}
+		for name := range app.Services {
+			for _, dep := range app.Services[name].DependsOn {
+				_ = g.AddEdge(name, dep)
+			}
+		}
+		app.Dag = g
+		if debug {
+			debugProject()
+			fmt.Println()
+			debugCompose()
+		}
+		app.SetConfig(conf)
+		return nil
+	},
 
 	Short:   "Define and run multi-instance applications with Incus",
 	Long:    `Define and run multi-instance applications with Incus`,
@@ -73,6 +185,8 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.incus-compose.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cwd, "cwd", "", "change working directory")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "print commands that would be executed without running them")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -121,32 +235,32 @@ func globalPreRunHook(cmd *cobra.Command, args []string) {
 	}
 
 	// load the compose file
-	var err error
-	var composeFileName = ""
-	if len(args) > 0 {
-		composeFileName = args[0]
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		slog.Error("Loading yaml", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-	app, err = application.Load(cwd, composeFileName)
-	if err != nil {
-		//	slog.Error("Loading yaml", slog.String("error", err.Error()))
-		validationErrors, ok := err.(validator.ValidationErrors)
-		if ok {
-			for _, e := range validationErrors {
-				slog.Error("Validation error", slog.String("namespace", e.StructNamespace()), slog.String("field", e.Field()), slog.String("error", e.Tag()))
-			}
-			os.Exit(1)
+	// var err error
+	// var composeFileName = ""
+	// if len(args) > 0 {
+	// 	composeFileName = args[0]
+	// }
+	// cwd, err := os.Getwd()
+	// if err != nil {
+	// 	slog.Error("Loading yaml", slog.String("error", err.Error()))
+	// 	os.Exit(1)
+	// }
+	// app, err = application.Load(cwd, composeFileName)
+	// if err != nil {
+	// 	//	slog.Error("Loading yaml", slog.String("error", err.Error()))
+	// 	validationErrors, ok := err.(validator.ValidationErrors)
+	// 	if ok {
+	// 		for _, e := range validationErrors {
+	// 			slog.Error("Validation error", slog.String("namespace", e.StructNamespace()), slog.String("field", e.Field()), slog.String("error", e.Tag()))
+	// 		}
+	// 		os.Exit(1)
 
-		} else {
-			// this could be ok, for example when generating a new config
-			// probably need to add a check for this in commands that expect a valid config
-			slog.Info("No compose file found")
-		}
-	}
+	// 	} else {
+	// 		// this could be ok, for example when generating a new config
+	// 		// probably need to add a check for this in commands that expect a valid config
+	// 		slog.Info("No compose file found")
+	// 	}
+	// }
 }
 
 func getLogLevelFromEnv() slog.Level {
@@ -162,6 +276,125 @@ func getLogLevelFromEnv() slog.Level {
 		return slog.LevelError
 	default:
 		return slog.LevelInfo
+
+	}
+}
+
+func configureLoader(cmd *cobra.Command) compose.Loader {
+	f := cmd.Flags()
+	o := compose.LoaderOptions{}
+	var err error
+
+	// o.ConfigPaths, err = f.GetStringArray("file")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	o.WorkingDir, err = f.GetString("cwd")
+	if err != nil {
+		panic(err)
+	}
+
+	// o.ProjectName, err = f.GetString("project-name")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	return compose.NewLoaderWithOptions(o)
+}
+
+func debugCompose() {
+	fmt.Println("project name:", app.Name)
+	fmt.Println("default profiles:", app.Profiles)
+	fmt.Println("project:", app.Project)
+
+	for sn, svc := range app.Services {
+		fmt.Println("service:", sn)
+		fmt.Println("	image:", svc.Image)
+		fmt.Println("	additional profiles:", svc.AdditionalProfiles)
+		fmt.Println("	cloud-init user data file:", svc.CloudInitUserDataFile)
+		fmt.Println("	depends on:", svc.DependsOn)
+		fmt.Println("	snapshot:", svc.Snapshot)
+		fmt.Println("	gpu:", svc.GPU)
+		for vn, vol := range svc.Volumes {
+			fmt.Println("	volume:", vn)
+			fmt.Println("		mountpoint:", vol.Mountpoint)
+			fmt.Println("		pool:", vol.Pool)
+			fmt.Println("		snapshot:", vol.Snapshot)
+		}
+		for bm, bind := range svc.BindMounts {
+			fmt.Println("	bind mount:", bm)
+			fmt.Println("		type:", bind.Type)
+			fmt.Println("		source:", bind.Source)
+			fmt.Println("		target:", bind.Target)
+			fmt.Println("		shift:", bind.Shift)
+		}
+		for k, v := range svc.Environment {
+			fmt.Printf("	environment: %q = %q\n", k, *v)
+		}
+
+	}
+}
+
+func debugProject() {
+	fmt.Println("project name:", project.Name)
+	fmt.Println("extensions:")
+
+	for k, v := range project.Extensions {
+		switch k {
+		case "x-incus-default-profiles", "x-incus-project":
+			fmt.Printf("	%q value: %q\n", k, v)
+
+			continue
+		default:
+			fmt.Printf("	unsupported compose extension: %q\n", k)
+		}
+	}
+
+	for _, svccfg := range project.Services {
+
+		fmt.Printf("service: %q image: %q\n", svccfg.Name, svccfg.Image)
+		fmt.Println("	extensions:")
+
+		for k, v := range svccfg.Extensions {
+			switch k {
+			case "x-incus-cloud-init-user-data-file", "x-incus-additional-profiles", "x-incus-snapshot", "x-incus-gpu":
+				fmt.Printf("		%q value: %q\n", k, v)
+
+				continue
+			default:
+				fmt.Printf("		unsupported compose extension: %q\n", k)
+			}
+		}
+		fmt.Println("	volumes:")
+
+		for _, vcfg := range svccfg.Volumes {
+			fmt.Printf("		%q target: %q\n", vcfg.Source, vcfg.Target)
+			for k, v := range vcfg.Extensions {
+				switch k {
+				case "x-incus-shift":
+					fmt.Printf("		extension: %q value: %v\n", k, v)
+
+					continue
+				default:
+					fmt.Printf("		unsupported compose extension: %q\n", k)
+				}
+			}
+		}
+	}
+	for _, volCfg := range project.Volumes {
+
+		fmt.Printf("volume: %q driver: %q\n", volCfg.Name, volCfg.Driver)
+		fmt.Println(volCfg.DriverOpts)
+		for k, v := range volCfg.Extensions {
+			switch k {
+			case "x-incus-snapshot":
+				fmt.Printf("volume %q: extension: %q value: %q\n", volCfg.Name, k, v)
+
+				continue
+			default:
+				fmt.Printf("volume %q: unsupported compose extension: %q\n", volCfg.Name, k)
+			}
+		}
 
 	}
 }

@@ -82,3 +82,10 @@ profiles: # existing profiles to apply to all instances
     - default 
     - vlan5
 ```
+
+# TODO
+
+- [ ] environment variables, enumerate & bind
+- [ ] networks key, what to do?
+- [ ] validation, unsupported keys. warn, abort?
+- [ ] ports, when to proxy, POLS

@@ -12,6 +12,7 @@ import (
 )
 
 func (app *Compose) Up() error {
+
 	for _, service := range app.Order(true) {
 
 		err := app.InitContainerForService(service)
@@ -29,10 +30,10 @@ func (app *Compose) Up() error {
 			return err
 		}
 
-		err = app.CreateGPUForService(service)
-		if err != nil {
-			return err
-		}
+		// err = app.CreateGPUForService(service)
+		// if err != nil {
+		// 	return err
+		// }
 		err = app.AttachVolumesForService(service)
 		if err != nil {
 			return err
@@ -40,11 +41,7 @@ func (app *Compose) Up() error {
 
 		err = app.StartContainerForService(service, true)
 		if err != nil {
-			if strings.Contains(err.Error(), "already running") {
-				slog.Info("Instance already running", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 
 	}
@@ -56,11 +53,7 @@ func (app *Compose) Stop(stateful, force bool, timeout int) error {
 
 		err := app.StopContainerForService(service, stateful, force, timeout)
 		if err != nil {
-			if strings.Contains(err.Error(), "already stopped") {
-				slog.Info("Instance already stopped", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 
 	}
@@ -72,11 +65,7 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 
 		err := app.StopContainerForService(service, false, force, timeout)
 		if err != nil {
-			if strings.Contains(err.Error(), "already stopped") {
-				slog.Info("Instance already stopped", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 		err = app.RemoveContainerForService(service)
 		if err != nil {
@@ -168,11 +157,7 @@ func (app *Compose) Start(wait bool) error {
 
 		err := app.StartContainerForService(service, wait)
 		if err != nil {
-			if strings.Contains(err.Error(), "already running") {
-				slog.Info("Instance already running", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 
 	}
@@ -220,16 +205,16 @@ func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 				return err
 			}
 		}
-		needsProfile, err := app.ServiceNeedsInitProfile(service)
-		if err != nil {
-			return err
-		}
-		if needsProfile {
-			err = app.DeleteCloudProfileForService(service)
-			if err != nil {
-				return err
-			}
-		}
+		// 	needsProfile, err := app.ServiceNeedsInitProfile(service)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	if needsProfile {
+		// 		err = app.DeleteCloudProfileForService(service)
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 	}
 	}
 	return nil
 }
