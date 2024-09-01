@@ -164,6 +164,18 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 	}
 	client.WithProject(app.GetProject())
 
+	instance, _, err := client.GetInstance(service)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+
+	// Check if device exists
+	_, ok := instance.Devices[name]
+	if ok {
+		slog.Info("Device already exists", slog.String("volume", name))
+		return nil
+	}
+
 	if err := client.AttachStorageVolume(vol.Pool, name, service, vol.Mountpoint); err != nil {
 		slog.Error(err.Error())
 	}
