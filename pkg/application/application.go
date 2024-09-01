@@ -191,9 +191,12 @@ func (app *Compose) SetConfig(config *config.Config) {
 // Use reverse=true for starting services.
 // Use reverse=false for stopping services.
 func (app *Compose) Order(reverse bool) []string {
-	order, _ := graph.TopologicalSort(app.Dag)
-	if reverse {
-		slices.Reverse(order)
+	if app.Dag != nil {
+		order, _ := graph.TopologicalSort(app.Dag)
+		if reverse {
+			slices.Reverse(order)
+		}
+		return order
 	}
-	return order
+	return []string{}
 }

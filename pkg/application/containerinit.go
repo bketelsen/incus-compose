@@ -169,6 +169,12 @@ func (app *Compose) InitContainerForService(service string) error {
 	}
 	client.WithProject(app.GetProject())
 
+	inst, _, _ := client.GetInstance(service)
+	if inst != nil && inst.Name == service {
+		slog.Info("Instance found", slog.String("instance", service))
+		return nil
+	}
+
 	var instancePost api.InstancesPost
 	var devicesMap map[string]map[string]string
 	var configMap map[string]string

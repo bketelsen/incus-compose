@@ -20,6 +20,11 @@ func (app *Compose) RemoveContainerForService(service string) error {
 		return err
 	}
 	client.WithProject(app.GetProject())
-	return client.DeleteInstance(service)
+
+	inst, _, _ := client.GetInstance(service)
+	if inst != nil && inst.Name == service {
+		return client.DeleteInstance(service)
+	}
+	return nil
 
 }

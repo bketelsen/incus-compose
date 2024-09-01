@@ -41,11 +41,7 @@ func (app *Compose) Up() error {
 
 		err = app.StartContainerForService(service, true)
 		if err != nil {
-			if strings.Contains(err.Error(), "already running") {
-				slog.Info("Instance already running", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 
 	}
@@ -57,11 +53,7 @@ func (app *Compose) Stop(stateful, force bool, timeout int) error {
 
 		err := app.StopContainerForService(service, stateful, force, timeout)
 		if err != nil {
-			if strings.Contains(err.Error(), "already stopped") {
-				slog.Info("Instance already stopped", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 
 	}
@@ -73,11 +65,7 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 
 		err := app.StopContainerForService(service, false, force, timeout)
 		if err != nil {
-			if strings.Contains(err.Error(), "already stopped") {
-				slog.Info("Instance already stopped", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 		err = app.RemoveContainerForService(service)
 		if err != nil {
@@ -169,11 +157,7 @@ func (app *Compose) Start(wait bool) error {
 
 		err := app.StartContainerForService(service, wait)
 		if err != nil {
-			if strings.Contains(err.Error(), "already running") {
-				slog.Info("Instance already running", slog.String("instance", service))
-			} else {
-				return err
-			}
+			return err
 		}
 
 	}

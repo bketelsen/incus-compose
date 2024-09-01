@@ -33,6 +33,18 @@ func (app *Compose) CreateBindsForService(service string) error {
 			return err
 		}
 		client.WithProject(app.GetProject())
+
+		inst, _, err := client.GetInstance(service)
+		if err != nil {
+			return err
+		}
+
+		_, ok := inst.Devices[bindName]
+		if ok {
+			slog.Info("Device already exists", slog.String("name", bindName))
+			return nil
+		}
+
 		err = client.AddDevice(service, bindName, device)
 		if err != nil {
 			return err
