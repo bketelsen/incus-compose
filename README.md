@@ -31,56 +31,74 @@ See the samples in the `samples` directory.
 
 ## Explanation
 
-
 ```
-name: cloud  # compose app name, used in custom storage & profile naming
-project: default  # incus project to use
-export_path: /var/backup/cloud  # where to export backups of instances and volumes (unimplemented)
-services:  # list of instances to create
-    mydb:
-        image: images:ubuntu/noble/cloud
-        gpu: true # share the gpu with the instance
-        cloud_init_user_data_file: mydb.yaml # if set, creates a custom profile and applies the cloud-init
-        additional_profiles: # additional profile to add to this instance
-            - nvmestorage
-        snapshot: # instance snapshot schedule
-            schedule: "@hourly"
-            expiry: 2w
-        volumes: # incus volumes to attach
-            config:
-                mountpoint: /config
-                pool: fast
-        binds: # host directories to bind
-            media:
-                type: disk
-                source: /var/home/bjk
-                target: /media
-                shift: true
-    myjellyfin:
-        image: images:ubuntu/noble/cloud
-        gpu: true
-        cloud_init_user_data_file: jellyfin.yaml
-        depends_on: # dependencies, used to determine start/stop order
-            - mydb
-        snapshot:
-            schedule: "@hourly"
-            expiry: 2w
-        volumes:
-            config:
-                mountpoint: /config
-                pool: default
-                snapshot: # volumes aren't included in container snapshots, but you can configure snapshots per volume
-                    schedule: "@hourly"
-                    expiry: 2w
-        binds:
-            media:
-                type: disk
-                source: /var/home/bjk
-                target: /media
-                shift: true
-profiles: # existing profiles to apply to all instances
-    - default 
-    - vlan5
+
+x-incus-default-profiles: 
+  - default
+
+services:
+  drone-server:
+    image: images:debian/bookworm/cloud
+    container_name: drone-server
+    restart: unless-stopped
+    x-incus-cloud-init-user-data-file: trixie.yaml
+    x-incus-gpu: true
+    volumes:
+      - ./drone/data:/var/lib/drone
+      - myvolume:/mnt/drone/myvolume
+      - type: bind
+        source: /var/home/bjk/
+        target: /mnt/drone/myhome
+        x-incus-shift: true
+    environment:
+      - DRONE_DEBUG=true
+
+      - DRONE_SERVER_PORT=:80
+      - DRONE_DATABASE_DRIVER=sqlite3
+      - DRONE_GIT_ALWAYS_AUTH=false
+      - DRONE_GITEA_SERVER=https://git.domain.tld # change this to your gitea instance
+      - DRONE_RPC_SECRET=8aff725d2e16ef31fbc42
+      - DRONE_SERVER_HOST=drone.domain.tld # change this to your drone instance
+      - DRONE_HOST=https://drone.domain.tld # change this to your drone instance; adjust http/https
+      - DRONE_SERVER_PROTO=https # adjust http/https
+      - DRONE_TLS_AUTOCERT=false
+      - DRONE_AGENTS_ENABLED=true
+      - DRONE_GITEA_CLIENT_ID=XXX-XXX # change this to your client ID from Gitea; see https://docs.drone.io/server/provider/gitea/
+      - DRONE_GITEA_CLIENT_SECRET=XXX-XXX # change this to your client secret from Gitea; see https://docs.drone.io/server/provider/gitea/
+    networks:
+      - br0.5 
+    depends_on:
+      - drone-agent
+
+  drone-agent:
+    image: images:debian/bookworm/cloud
+    command: agent
+    restart: unless-stopped
+    container_name: drone-agent
+    x-incus-cloud-init-user-data-file: trixie.yaml
+    x-incus-snapshot:
+      schedule: '@daily'
+      expiry: 14d
+    environment:
+      - DRONE_RPC_SERVER=http://drone-server:80
+      - DRONE_RPC_SECRET=8aff725d2e16ef31fbc42
+      - DRONE_RUNNER_CAPACITY=2
+    networks:
+      - br0.5
+
+networks:
+  br0.5:
+    external: true
+
+volumes:
+  myvolume:
+    x-incus-snapshot:
+      schedule: '@hourly'
+      expiry: 2d
+    driver: incus
+    driver_opts: 
+      pool: "default"
+
 ```
 
 # TODO
