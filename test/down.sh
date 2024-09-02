@@ -1,0 +1,2 @@
+incus rm --force  composetest
+
