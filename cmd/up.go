@@ -32,12 +32,7 @@ var upCmd = &cobra.Command{
 	Use:   "up",
 	Args:  cobra.MaximumNArgs(1),
 	Short: "Create and start instances",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long:  `Create and start instances.  If no service is specified, all services will be created and started.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		slog.Info("Starting", slog.String("app", app.Name))
