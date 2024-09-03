@@ -1,2 +1,34 @@
-incus-compose
+/incus-compose
 dist/
+
+*.swp
+po/*.mo
+po/*.po~
+incus-compose*.tar.xz
+.vagrant
+*~
+tags
+
+# Potential binaries
+cmd/incus-compose/incus-compose
+
+
+# Sphinx
+doc/html/
+doc/reference/manpages/**/*.md
+doc/.sphinx/deps/
+doc/.sphinx/.doctrees/
+doc/.sphinx/themes/
+doc/.sphinx/venv/
+doc/.sphinx/warnings.txt
+doc/.sphinx/.wordlist.dic
+doc/.sphinx/_static/swagger-ui
+doc/.sphinx/_static/download
+doc/__pycache__
+
+# For Atom ctags
+.tags
+.tags1
+
+# For JetBrains IDEs
+.idea

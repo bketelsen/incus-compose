@@ -11,43 +11,6 @@ import (
 	"github.com/bketelsen/incus-compose/pkg/ui"
 )
 
-func (app *Compose) Up() error {
-
-	for _, service := range app.Order(true) {
-
-		err := app.InitContainerForService(service)
-		if err != nil {
-			return err
-		}
-
-		err = app.CreateVolumesForService(service)
-		if err != nil {
-			return err
-		}
-
-		err = app.CreateBindsForService(service)
-		if err != nil {
-			return err
-		}
-
-		// err = app.CreateGPUForService(service)
-		// if err != nil {
-		// 	return err
-		// }
-		err = app.AttachVolumesForService(service)
-		if err != nil {
-			return err
-		}
-
-		err = app.StartContainerForService(service, true)
-		if err != nil {
-			return err
-		}
-
-	}
-	return nil
-}
-
 func (app *Compose) Stop(stateful, force bool, timeout int) error {
 	for _, service := range app.Order(false) {
 
@@ -60,48 +23,6 @@ func (app *Compose) Stop(stateful, force bool, timeout int) error {
 	return nil
 }
 
-func (app *Compose) Down(force, volumes bool, timeout int) error {
-	for _, service := range app.Order(false) {
-
-		err := app.StopContainerForService(service, false, force, timeout)
-		if err != nil {
-			return err
-		}
-		err = app.RemoveContainerForService(service)
-		if err != nil {
-			return err
-		}
-		if volumes {
-			err = app.DeleteVolumesForService(service)
-			if err != nil {
-				return err
-			}
-		} else {
-			vols, err := app.ListVolumesForService(service)
-			if err != nil {
-				return err
-			}
-			if len(vols) > 0 {
-				for _, vol := range vols {
-					slog.Warn("Volume not deleted", slog.String("instance", service), slog.String("volume", fmt.Sprintf("%v", vol)))
-				}
-			}
-		}
-
-		needsProfile, err := app.ServiceNeedsInitProfile(service)
-		if err != nil {
-			return err
-		}
-		if needsProfile {
-			err = app.DeleteCloudProfileForService(service)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
 func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
 	for _, service := range app.Order(false) {
 		slog.Info("Instance snapshot start", slog.String("instance", service))

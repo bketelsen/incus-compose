@@ -12,9 +12,7 @@ import (
 
 func parseService(s types.ServiceConfig) Service {
 	service := Service{}
-	fmt.Println("depends", s.DependsOn)
-	for dep, cfg := range s.DependsOn {
-		fmt.Println(dep, cfg)
+	for dep := range s.DependsOn {
 		service.DependsOn = append(service.DependsOn, dep)
 	}
 	service.Environment = make(map[string]*string)
@@ -113,9 +111,6 @@ func parseService(s types.ServiceConfig) Service {
 
 	service.Image = s.Image
 
-	for k := range s.Networks {
-		fmt.Println("network", k)
-	}
 	return service
 
 }

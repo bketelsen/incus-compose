@@ -7,7 +7,7 @@ tasks:
   build:
     desc: build the project
     cmds:
-      - go build -o incus-compose
+      - make client
 
   sample:
     desc: Create sample incus-compose.yaml
