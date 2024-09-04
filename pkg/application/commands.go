@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
 	"github.com/bketelsen/incus-compose/pkg/ui"
 )
 
@@ -212,20 +211,18 @@ func (app *Compose) Info() error {
 
 	for service := range app.Services {
 
-		client, err := client.NewIncusClient()
+		d, err := app.getInstanceServer(service)
+		if err != nil {
+			return err
+		}
+
+		i, _, err := d.GetInstance(service)
 		if err != nil {
 			slog.Error(err.Error())
 
 			return err
 		}
-		client.WithProject(app.GetProject())
-		i, _, err := client.GetInstance(service)
-		if err != nil {
-			slog.Error(err.Error())
-
-			return err
-		}
-		s, _, err := client.GetInstanceState(service)
+		s, _, err := d.GetInstanceState(service)
 		if err != nil {
 			slog.Error(err.Error())
 
