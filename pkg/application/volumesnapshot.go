@@ -1,20 +1,44 @@
 package application
 
 import (
-	"log/slog"
+	"fmt"
 	"time"
 
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
+	api "github.com/lxc/incus/v6/shared/api"
 )
 
 func (app *Compose) SnapshotVolume(pool, volume string, noexpiry, stateful, volumes bool) error {
 
-	client, err := client.NewIncusClient()
+	return app.volumeSnapshot(pool, volume, snapshotName(volume), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
+
+}
+
+func (app *Compose) volumeSnapshot(pool, volume, snapshotName string, stateful bool, noexpiry bool, expiration time.Time) error {
+	// Parse remote
+	resources, err := app.ParseServers(pool)
 	if err != nil {
-		slog.Error(err.Error())
 		return err
 	}
-	client.WithProject(app.GetProject())
-	return client.SnapshotVolume(pool, volume, snapshotName(volume), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
+
+	resource := resources[0]
+	if resource.name == "" {
+		return fmt.Errorf("Missing pool name")
+	}
+	req := api.StorageVolumeSnapshotsPost{
+		Name: snapshotName,
+	}
+
+	if noexpiry {
+		req.ExpiresAt = &time.Time{}
+	} else if !expiration.IsZero() {
+		req.ExpiresAt = &expiration
+	}
+
+	op, err := resource.server.CreateStoragePoolVolumeSnapshot(pool, "custom", volume, req)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
 
 }
