@@ -3,9 +3,7 @@ package application
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
-	"text/template"
 
 	"github.com/bketelsen/incus-compose/pkg/incus/client"
 	"github.com/bketelsen/incus-compose/pkg/ui"
@@ -250,57 +248,3 @@ func (app *Compose) Info() error {
 
 	return nil
 }
-
-func (app *Compose) Inventory() error {
-
-	inventory := make(map[string][]string)
-	defaultList := []string{}
-
-	for service := range app.Services {
-		svc, ok := app.Services[service]
-		if !ok {
-			return fmt.Errorf("service %s not found", service)
-		}
-
-		if len(svc.InventoryGroups) > 0 {
-			for _, group := range svc.InventoryGroups {
-				inventory[group] = append(inventory[group], service)
-			}
-
-		} else {
-			defaultList = append(defaultList, service)
-
-		}
-
-	}
-
-	Create := func(name, t string) *template.Template {
-		return template.Must(template.New(name).Parse(t))
-	}
-	f, err := os.Create("hosts")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	tmpl := Create("default", defaultTemplate)
-	err = tmpl.Execute(f, defaultList)
-	if err != nil {
-		return err
-	}
-	tmpl2 := Create("group", group)
-	err = tmpl2.Execute(f, inventory)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-var defaultTemplate = `{{range .}}{{.}}
-{{end -}}`
-var group = `{{range $key, $value := .}}
-[{{$key}}]
-{{range $value}}{{.}}
-{{end -}}
-{{end -}}
-`
