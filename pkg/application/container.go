@@ -195,40 +195,42 @@ func (app *Compose) InitContainerForService(service string) error {
 	if len(sc.Networks) > 0 {
 		networkNumber := 0
 		for net := range sc.Networks {
-			netName := fmt.Sprintf("eth%d", networkNumber)
+			if net != "default" {
+				netName := fmt.Sprintf("eth%d", networkNumber)
 
-			network, _, err := d.GetNetwork(net)
-			if err != nil {
-				return fmt.Errorf("failed loading network %q: %w", net, err)
+				network, _, err := d.GetNetwork(net)
+				if err != nil {
+					return fmt.Errorf("failed loading network %q: %w", net, err)
+				}
+
+				// Prepare the instance's NIC device entry.
+				var device map[string]string
+
+				if network.Managed && d.HasExtension("instance_nic_network") {
+					// If network is snapmanaged, use the network property rather than nictype, so that the
+					// network's inherited properties are loaded into the NIC when started.
+					device = map[string]string{
+						"name":    netName,
+						"type":    "nic",
+						"network": network.Name,
+					}
+				} else {
+					// If network is unmanaged default to using a macvlan connected to the specified interface.
+					device = map[string]string{
+						"name":    netName,
+						"type":    "nic",
+						"nictype": "macvlan",
+						"parent":  net,
+					}
+
+					if network.Type == "bridge" {
+						// If the network type is an unmanaged bridge, use bridged NIC type.
+						device["nictype"] = "bridged"
+					}
+				}
+				devicesMap[netName] = device
+				networkNumber++
 			}
-
-			// Prepare the instance's NIC device entry.
-			var device map[string]string
-
-			if network.Managed && d.HasExtension("instance_nic_network") {
-				// If network is snapmanaged, use the network property rather than nictype, so that the
-				// network's inherited properties are loaded into the NIC when started.
-				device = map[string]string{
-					"name":    netName,
-					"type":    "nic",
-					"network": network.Name,
-				}
-			} else {
-				// If network is unmanaged default to using a macvlan connected to the specified interface.
-				device = map[string]string{
-					"name":    netName,
-					"type":    "nic",
-					"nictype": "macvlan",
-					"parent":  net,
-				}
-
-				if network.Type == "bridge" {
-					// If the network type is an unmanaged bridge, use bridged NIC type.
-					device["nictype"] = "bridged"
-				}
-			}
-			devicesMap[netName] = device
-			networkNumber++
 		}
 	} // sc.networks
 
