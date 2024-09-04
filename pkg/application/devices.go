@@ -3,8 +3,6 @@ package application
 import (
 	"fmt"
 	"log/slog"
-
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
 )
 
 func (app *Compose) CreateGPUForService(service string) error {
@@ -27,31 +25,15 @@ func (app *Compose) CreateGPUForService(service string) error {
 
 func (app *Compose) createGPU(service string) error {
 	slog.Info("Create GPU", slog.String("instance", service))
-
-	// args := []string{"config", "device", "add", service, service + "-gpu", "gpu"}
-	// args = append(args, "--project", app.GetProject())
-
-	// slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
-
-	// out, err := incus.ExecuteShell(context.Background(), args)
-	// if err != nil {
-	// 	slog.Error("Incus error", slog.String("message", out))
-	// 	return err
-	// }
-	// slog.Debug("Incus ", slog.String("message", out))
 	bindName := service + "-gpu"
 
 	slog.Info("Creating Device", slog.String("name", bindName))
 
 	device := map[string]string{}
 	device["type"] = "gpu"
+	slog.Info("Creating BindMount", slog.String("name", bindName))
 
-	client, err := client.NewIncusClient()
-	if err != nil {
-		return err
-	}
-	client.WithProject(app.GetProject())
-	err = client.AddDevice(service, bindName, device)
+	err := app.addDevice(service, bindName, device)
 	if err != nil {
 		return err
 	}

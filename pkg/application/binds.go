@@ -35,23 +35,3 @@ func (app *Compose) CreateBindsForService(service string) error {
 
 	return nil
 }
-
-// func (app *Compose) ShowDevicesForService(service string) error {
-// 	slog.Info("Showing Device Info", slog.String("service", service))
-
-// 	_, ok := app.Services[service]
-// 	if !ok {
-// 		return fmt.Errorf("service %s not found", service)
-// 	}
-
-// 	args := []string{"config", "device", "show", service}
-// 	args = append(args, "--project", app.GetProject())
-
-// 	out, err := incus.ExecuteShellStream(context.Background(), args)
-// 	if err != nil {
-// 		slog.Error("Incus error", slog.String("message", out))
-// 		return err
-// 	}
-// 	slog.Debug("Incus ", slog.String("message", out))
-// 	return nil
-// }
