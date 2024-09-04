@@ -35,7 +35,7 @@ import (
 	"github.com/bketelsen/incus-compose/pkg/application"
 	"github.com/bketelsen/incus-compose/pkg/build"
 	"github.com/bketelsen/incus-compose/pkg/compose"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	dockercompose "github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
