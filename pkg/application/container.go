@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -481,4 +482,35 @@ func readEnvironmentFile(path string) (map[string]string, error) {
 	}
 
 	return envMap, nil
+}
+
+func (app *Compose) addDevice(instance, name string, device map[string]string) error {
+
+	d, err := app.getInstanceServer(instance)
+	if err != nil {
+		return err
+	}
+	inst, etag, err := d.GetInstance(instance)
+	if err != nil {
+		return err
+	}
+
+	_, ok := inst.Devices[name]
+	if ok {
+		return errors.New("device already exists")
+	}
+
+	inst.Devices[name] = device
+
+	op, err := d.UpdateInstance(instance, inst.Writable(), etag)
+	if err != nil {
+		return err
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

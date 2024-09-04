@@ -3,8 +3,6 @@ package application
 import (
 	"fmt"
 	"log/slog"
-
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
 )
 
 func (app *Compose) CreateBindsForService(service string) error {
@@ -28,24 +26,7 @@ func (app *Compose) CreateBindsForService(service string) error {
 		if bind.Shift {
 			device["shift"] = "true"
 		}
-		client, err := client.NewIncusClient()
-		if err != nil {
-			return err
-		}
-		client.WithProject(app.GetProject())
-
-		inst, _, err := client.GetInstance(service)
-		if err != nil {
-			return err
-		}
-
-		_, ok := inst.Devices[bindName]
-		if ok {
-			slog.Info("Device already exists", slog.String("name", bindName))
-			return nil
-		}
-
-		err = client.AddDevice(service, bindName, device)
+		err := app.addDevice(service, bindName, device)
 		if err != nil {
 			return err
 		}
