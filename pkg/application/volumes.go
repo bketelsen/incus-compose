@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
 	api "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -188,13 +187,12 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
-	client, err := client.NewIncusClient()
+	d, err := app.getInstanceServer(service)
 	if err != nil {
-		slog.Error(err.Error())
+		return err
 	}
-	client.WithProject(app.GetProject())
 
-	instance, _, err := client.GetInstance(service)
+	instance, etag, err := d.GetInstance(service)
 	if err != nil {
 		slog.Error(err.Error())
 	}
@@ -206,50 +204,27 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 		return nil
 	}
 
-	if err := client.AttachStorageVolume(vol.Pool, name, service, vol.Mountpoint); err != nil {
-		slog.Error(err.Error())
+	volName, volType := parseVolume("custom", name)
+	if volType != "custom" {
+		return fmt.Errorf("Only \"custom\" volumes can be attached to instances")
 	}
 
-	return nil
-}
+	// Prepare the instance's device entry
+	dev := map[string]string{
+		"type":   "disk",
+		"pool":   vol.Pool,
+		"source": volName,
+		"path":   vol.Mountpoint,
+	}
 
-func (app *Compose) showVolume(name string, vol Volume) (*api.StorageVolume, error) {
-	slog.Info("Checking volume", slog.String("volume", name))
+	instance.Devices[name] = dev
 
-	args := []string{"storage", "volume", "show", vol.Pool, name}
-	args = append(args, "--project", app.GetProject())
-
-	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
-
-	client, err := client.NewIncusClient()
+	op, err := d.UpdateInstance(service, instance.Writable(), etag)
 	if err != nil {
-		slog.Error(err.Error())
-	}
-	client.WithProject(app.GetProject())
-	fmt.Println("showing volume", vol.Pool, name)
-	v, err := client.ShowStorageVolume(vol.Pool, name)
-	if err != nil {
-		fmt.Println("showing volume error", err)
-		return nil, err
+		return err
 	}
 
-	return v, nil
-}
-
-func (app *Compose) ShowVolumesForService(service string) error {
-	slog.Info("Showing", slog.String("instance", service))
-	svc, ok := app.Services[service]
-	if !ok {
-		return fmt.Errorf("service %s not found", service)
-	}
-	for volName, vol := range svc.Volumes {
-		vol, err := app.showVolume(vol.CreateName(app.Name, service, volName), *vol)
-		if err != nil {
-			slog.Error(err.Error())
-		}
-		fmt.Println(vol)
-	}
-	return nil
+	return op.Wait()
 }
 
 func (v *Volume) CreateName(application string, service string, volume string) string {

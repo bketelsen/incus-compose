@@ -25,6 +25,7 @@ func (app *Compose) CreateGPUForService(service string) error {
 
 func (app *Compose) createGPU(service string) error {
 	slog.Info("Create GPU", slog.String("instance", service))
+
 	bindName := service + "-gpu"
 
 	slog.Info("Creating Device", slog.String("name", bindName))
