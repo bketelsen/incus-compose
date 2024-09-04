@@ -88,17 +88,6 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 			}
 		}
 
-		needsProfile, err := app.ServiceNeedsInitProfile(service)
-		if err != nil {
-			return err
-		}
-		if needsProfile {
-			err = app.DeleteCloudProfileForService(service)
-			if err != nil {
-				return err
-			}
-		}
-
 	}
 	return nil
 }

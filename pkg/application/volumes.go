@@ -63,16 +63,11 @@ func (app *Compose) DeleteVolumesForService(service string) error {
 		completeName := vol.CreateName(app.Name, service, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		existingVolume, _ := app.showVolume(completeName, *vol)
-
-		if existingVolume == nil || completeName != existingVolume.Name {
-			slog.Info("Volume not found", slog.String("volume", completeName))
-		} else {
-			err := app.deleteVolume(completeName, *vol)
-			if err != nil {
-				return err
-			}
+		err := app.deleteVolume(completeName, *vol)
+		if err != nil {
+			return err
 		}
+
 	}
 
 	return nil
