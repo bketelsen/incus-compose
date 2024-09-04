@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	cli "github.com/bketelsen/incus-compose/pkg/incus"
 	incus "github.com/lxc/incus/v6/client"
@@ -240,6 +241,19 @@ func (app *Compose) InitContainerForService(service string) error {
 		configMap["environment."+k] = *v
 	}
 
+	// add env vars from file
+	if len(sc.EnvFiles) > 0 {
+		for _, value := range sc.EnvFiles {
+			r, err := readEnvironmentFile(value.Path)
+			if err != nil {
+				return fmt.Errorf("failed reading env file %s: %w", value.Path, err)
+			}
+			for k, v := range r {
+				configMap["environment."+k] = v
+			}
+		}
+	}
+
 	// overridden storage
 	if storageOverride != "" {
 		_, _, err := d.GetStoragePool(storageOverride)
@@ -437,4 +451,34 @@ func (app *Compose) removeInstance(name string, force bool) error {
 	}
 	return nil
 
+}
+
+func readEnvironmentFile(path string) (map[string]string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Split the file into lines.
+	lines := strings.Split(string(content), "\n")
+
+	// Create a map to store the key value pairs.
+	envMap := make(map[string]string)
+
+	// Iterate over the lines.
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		pieces := strings.SplitN(line, "=", 2)
+		value := ""
+		if len(pieces) > 1 {
+			value = pieces[1]
+		}
+
+		envMap[pieces[0]] = value
+	}
+
+	return envMap, nil
 }
