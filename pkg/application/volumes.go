@@ -18,20 +18,21 @@ func (app *Compose) CreateVolumesForService(service string) error {
 		return fmt.Errorf("service %s not found", service)
 	}
 	for volName, vol := range svc.Volumes {
-
+		fmt.Println("Creating volume", volName, vol)
 		completeName := vol.CreateName(app.Name, service, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		existingVolume, _ := app.showVolume(completeName, *vol)
+		// existingVolume, _ := app.showVolume(completeName, *vol)
 
-		if existingVolume != nil && completeName == existingVolume.Name {
-			slog.Info("Volume found", slog.String("volume", completeName))
-		} else {
-			err := app.createVolume(completeName, *vol, *vol.Snapshot)
-			if err != nil {
-				return err
-			}
+		// if existingVolume != nil && completeName == existingVolume.Name {
+		// 	slog.Info("Volume found", slog.String("volume", completeName))
+		// } else {
+		fmt.Println("Creating volume", completeName, vol)
+		err := app.createVolume(completeName, *vol)
+		if err != nil {
+			return err
 		}
+		// }
 	}
 
 	return nil
@@ -91,7 +92,7 @@ func (app *Compose) AttachVolumesForService(service string) error {
 	return nil
 }
 
-func (app *Compose) createVolume(name string, vol Volume, snapshot Snapshot) error {
+func (app *Compose) createVolume(name string, vol Volume) error {
 	slog.Info("Creating Volume", slog.String("volume", name))
 
 	args := []string{"storage", "volume", "create", vol.Pool, name}
@@ -99,14 +100,16 @@ func (app *Compose) createVolume(name string, vol Volume, snapshot Snapshot) err
 
 	config := make(map[string]string)
 
-	if snapshot.Schedule != "" {
-		config["snapshots.schedule"] = snapshot.Schedule
-	}
-	if snapshot.Pattern != "" {
-		config["snapshots.pattern"] = snapshot.Pattern
-	}
-	if snapshot.Expiry != "" {
-		config["snapshots.expiry"] = snapshot.Expiry
+	if vol.Snapshot != nil {
+		if vol.Snapshot.Schedule != "" {
+			config["snapshots.schedule"] = vol.Snapshot.Schedule
+		}
+		if vol.Snapshot.Pattern != "" {
+			config["snapshots.pattern"] = vol.Snapshot.Pattern
+		}
+		if vol.Snapshot.Expiry != "" {
+			config["snapshots.expiry"] = vol.Snapshot.Expiry
+		}
 	}
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
@@ -227,9 +230,10 @@ func (app *Compose) showVolume(name string, vol Volume) (*api.StorageVolume, err
 		slog.Error(err.Error())
 	}
 	client.WithProject(app.GetProject())
-
+	fmt.Println("showing volume", vol.Pool, name)
 	v, err := client.ShowStorageVolume(vol.Pool, name)
 	if err != nil {
+		fmt.Println("showing volume error", err)
 		return nil, err
 	}
 
