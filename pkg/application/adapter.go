@@ -91,10 +91,11 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 		for _, s := range compose.Services {
 			for k, v := range s.Volumes {
 				fullVolName := p.Name + "_" + k
-				//fmt.Println("k, name", k, fullVolName)
+				fmt.Println("fullVolName, k, vol.Name", fullVolName, k, vol.Name)
 				if fullVolName == vol.Name {
 					v.Pool = pool
 					v.Snapshot = snap
+					v.Name = v.CreateName(p.Name, s.Name, k)
 				}
 			}
 		}
@@ -180,7 +181,6 @@ func parseService(s types.ServiceConfig) Service {
 		case "volume":
 			volume := &Volume{}
 			volume.Mountpoint = v.Target
-
 			service.Volumes[v.Source] = volume
 		case "bind":
 			bind := Bind{}

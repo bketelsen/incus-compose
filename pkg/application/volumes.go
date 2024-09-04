@@ -97,30 +97,54 @@ func (app *Compose) createVolume(name string, vol Volume, snapshot Snapshot) err
 	args := []string{"storage", "volume", "create", vol.Pool, name}
 	args = append(args, "--project", app.GetProject())
 
-	snapargs := make(map[string]string)
+	config := make(map[string]string)
 
 	if snapshot.Schedule != "" {
-		args = append(args, "snapshots.schedule="+"\""+snapshot.Schedule+"\"")
-		snapargs["snapshots.schedule"] = snapshot.Schedule
+		config["snapshots.schedule"] = snapshot.Schedule
 	}
 	if snapshot.Pattern != "" {
-		args = append(args, "snapshots.pattern="+"\""+snapshot.Pattern+"\"")
-		snapargs["snapshots.pattern"] = snapshot.Pattern
+		config["snapshots.pattern"] = snapshot.Pattern
 	}
 	if snapshot.Expiry != "" {
-		args = append(args, "snapshots.expiry="+"\""+snapshot.Expiry+"\"")
-		snapargs["snapshots.expiry"] = snapshot.Expiry
+		config["snapshots.expiry"] = snapshot.Expiry
 	}
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
-	client, err := client.NewIncusClient()
-	if err != nil {
-		slog.Error(err.Error())
-	}
-	client.WithProject(app.GetProject())
+	// Parse the input
+	volName, volType := parseVolume("custom", name)
 
-	if err := client.CreateStorageVolume(vol.Pool, name, snapargs); err != nil {
-		slog.Error(err.Error())
+	var volumePut api.StorageVolumePut
+
+	// Create the storage volume entry
+	newvol := api.StorageVolumesPost{
+		Name:             volName,
+		Type:             volType,
+		ContentType:      "filesystem",
+		StorageVolumePut: volumePut,
+	}
+
+	if volumePut.Config == nil {
+		newvol.Config = map[string]string{}
+	}
+
+	for k, v := range config {
+		newvol.Config[k] = v
+	}
+	// Parse remote
+	resources, err := app.ParseServers(vol.Pool)
+	if err != nil {
+		return err
+	}
+
+	resource := resources[0]
+	if resource.name == "" {
+		return fmt.Errorf("Missing pool name")
+	}
+
+	client := resource.server
+	err = client.CreateStoragePoolVolume(vol.Pool, newvol)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -144,9 +168,10 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 
 	// Parse the input
 	volName, volType := parseVolume("custom", vol.Name)
+	fmt.Println("Deleting volume", volName, name, volType)
 
 	// Delete the volume
-	err = client.DeleteStoragePoolVolume(resource.name, volType, volName)
+	err = client.DeleteStoragePoolVolume(resource.name, volType, name)
 	if err != nil {
 		return err
 	}
