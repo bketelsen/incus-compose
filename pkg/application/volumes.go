@@ -95,9 +95,6 @@ func (app *Compose) AttachVolumesForService(service string) error {
 func (app *Compose) createVolume(name string, vol Volume) error {
 	slog.Info("Creating Volume", slog.String("volume", name))
 
-	args := []string{"storage", "volume", "create", vol.Pool, name}
-	args = append(args, "--project", app.GetProject())
-
 	config := make(map[string]string)
 
 	if vol.Snapshot != nil {
@@ -111,7 +108,6 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 			config["snapshots.expiry"] = vol.Snapshot.Expiry
 		}
 	}
-	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
 	// Parse the input
 	volName, volType := parseVolume("custom", name)
