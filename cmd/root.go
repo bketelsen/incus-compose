@@ -47,7 +47,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
 var debug bool
 var conf *config.Config
 var confPath string
