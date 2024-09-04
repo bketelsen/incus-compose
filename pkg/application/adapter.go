@@ -8,8 +8,100 @@ import (
 
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/gosimple/slug"
+	cliconfig "github.com/lxc/incus/v6/shared/cliconfig"
 )
 
+func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
+	compose := &Compose{}
+	compose.ComposeProject = p
+	compose.Name = p.Name
+	compose.Project = "default"
+	compose.conf = conf
+
+	// parse extensions
+	for k, v := range p.Extensions {
+		switch k {
+		case "x-incus-default-profiles":
+			list, ok := v.([]interface{})
+			if ok {
+				for _, profile := range list {
+					p := profile.(string)
+					compose.Profiles = append(compose.Profiles, p)
+				}
+			}
+			continue
+		case "x-incus-project":
+			//fmt.Printf("project %q: extension: %q value: %q\n", p.Name, k, v)
+			proj, ok := v.(string)
+			if ok {
+				compose.Project = proj
+			}
+			continue
+		default:
+			fmt.Printf("project %q: unsupported compose extension: %q\n", p.Name, k)
+		}
+	}
+
+	// parse services
+	compose.Services = make(map[string]Service)
+	for _, s := range p.Services {
+		service := parseService(s)
+		compose.Services[s.Name] = service
+	}
+
+	// get additional information about volumes
+	for _, vol := range p.Volumes {
+		//fmt.Println(vol.Name)
+		pool := "default"
+		driverPool := vol.DriverOpts["pool"]
+		if driverPool != "" {
+			pool = driverPool
+		}
+		var snap *Snapshot
+
+		// parse volume extensions
+		for k, v := range vol.Extensions {
+			switch k {
+			case "x-incus-snapshot":
+				snapshot, ok := v.(map[string]interface{})
+				if ok {
+					//fmt.Println("parsed snapshot", snapshot)
+					snap = &Snapshot{}
+					for k, v := range snapshot {
+						switch k {
+						case "schedule":
+							snap.Schedule = v.(string)
+						case "expiry":
+							snap.Expiry = v.(string)
+						case "pattern":
+							snap.Pattern = v.(string)
+						default:
+							fmt.Printf("service %q: unsupported snapshot extension: %q\n", vol.Name, k)
+						}
+					}
+					//service.Snapshot = snap
+
+				}
+				continue
+			default:
+				fmt.Printf("volume %q: unsupported compose extension: %q\n", vol.Name, k)
+			}
+		}
+		// now find the service that uses this volume
+		for _, s := range compose.Services {
+			for k, v := range s.Volumes {
+				fullVolName := p.Name + "_" + k
+				fmt.Println("fullVolName, k, vol.Name", fullVolName, k, vol.Name)
+				if fullVolName == vol.Name {
+					v.Pool = pool
+					v.Snapshot = snap
+					v.Name = v.CreateName(p.Name, s.Name, k)
+				}
+			}
+		}
+	}
+	return compose, nil
+}
 func parseService(s types.ServiceConfig) Service {
 	service := Service{}
 	fmt.Println("depends", s.DependsOn)
@@ -17,6 +109,7 @@ func parseService(s types.ServiceConfig) Service {
 		fmt.Println(dep, cfg)
 		service.DependsOn = append(service.DependsOn, dep)
 	}
+	service.Name = s.Name
 	service.Environment = make(map[string]*string)
 	for k, v := range s.Environment {
 		service.Environment[k] = v
@@ -88,7 +181,6 @@ func parseService(s types.ServiceConfig) Service {
 		case "volume":
 			volume := &Volume{}
 			volume.Mountpoint = v.Target
-
 			service.Volumes[v.Source] = volume
 		case "bind":
 			bind := Bind{}

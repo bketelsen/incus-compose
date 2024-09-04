@@ -3,11 +3,8 @@ package application
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
-	"text/template"
 
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
 	"github.com/bketelsen/incus-compose/pkg/ui"
 )
 
@@ -67,7 +64,7 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 		if err != nil {
 			return err
 		}
-		err = app.RemoveContainerForService(service)
+		err = app.RemoveContainerForService(service, force)
 		if err != nil {
 			return err
 		}
@@ -88,17 +85,6 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 			}
 		}
 
-		needsProfile, err := app.ServiceNeedsInitProfile(service)
-		if err != nil {
-			return err
-		}
-		if needsProfile {
-			err = app.DeleteCloudProfileForService(service)
-			if err != nil {
-				return err
-			}
-		}
-
 	}
 	return nil
 }
@@ -112,12 +98,12 @@ func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
 		slog.Info("Instance snapshot complete", slog.String("instance", service))
 		if volumes {
 			for volName, vol := range app.Services[service].Volumes {
-				slog.Info("Volume snapshot start", slog.String("volume", vol.Name(app.Name, service, volName)))
-				err := app.SnapshotVolume(vol.Pool, vol.Name(app.Name, service, volName), noexpiry, stateful, volumes)
+				slog.Info("Volume snapshot start", slog.String("volume", vol.CreateName(app.Name, service, volName)))
+				err := app.SnapshotVolume(vol.Pool, vol.CreateName(app.Name, service, volName), noexpiry, stateful, volumes)
 				if err != nil {
 					return err
 				}
-				slog.Info("Volume snapshot complete", slog.String("volume", vol.Name(app.Name, service, volName)))
+				slog.Info("Volume snapshot complete", slog.String("volume", vol.CreateName(app.Name, service, volName)))
 			}
 		}
 
@@ -139,12 +125,12 @@ func (app *Compose) Export(volumes bool, customVolumesOnly bool) error {
 		}
 		if customVolumesOnly {
 			for volName, vol := range app.Services[service].Volumes {
-				slog.Info("Volume export start", slog.String("volume", vol.Name(app.Name, service, volName)))
-				err := app.ExportVolume(vol.Pool, vol.Name(app.Name, service, volName))
+				slog.Info("Volume export start", slog.String("volume", vol.CreateName(app.Name, service, volName)))
+				err := app.ExportVolume(vol.Pool, vol.CreateName(app.Name, service, volName))
 				if err != nil {
 					return err
 				}
-				slog.Info("Volume export complete", slog.String("volume", vol.Name(app.Name, service, volName)))
+				slog.Info("Volume export complete", slog.String("volume", vol.CreateName(app.Name, service, volName)))
 			}
 		}
 
@@ -189,7 +175,7 @@ func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 				}
 			}
 		}
-		err := app.RemoveContainerForService(service)
+		err := app.RemoveContainerForService(service, force)
 		if err != nil {
 			if strings.Contains(err.Error(), "running") {
 				slog.Error("Instance currently running", slog.String("instance", service))
@@ -225,20 +211,18 @@ func (app *Compose) Info() error {
 
 	for service := range app.Services {
 
-		client, err := client.NewIncusClient()
+		d, err := app.getInstanceServer(service)
+		if err != nil {
+			return err
+		}
+
+		i, _, err := d.GetInstance(service)
 		if err != nil {
 			slog.Error(err.Error())
 
 			return err
 		}
-		client.WithProject(app.GetProject())
-		i, _, err := client.GetInstance(service)
-		if err != nil {
-			slog.Error(err.Error())
-
-			return err
-		}
-		s, _, err := client.GetInstanceState(service)
+		s, _, err := d.GetInstanceState(service)
 		if err != nil {
 			slog.Error(err.Error())
 
@@ -261,57 +245,3 @@ func (app *Compose) Info() error {
 
 	return nil
 }
-
-func (app *Compose) Inventory() error {
-
-	inventory := make(map[string][]string)
-	defaultList := []string{}
-
-	for service := range app.Services {
-		svc, ok := app.Services[service]
-		if !ok {
-			return fmt.Errorf("service %s not found", service)
-		}
-
-		if len(svc.InventoryGroups) > 0 {
-			for _, group := range svc.InventoryGroups {
-				inventory[group] = append(inventory[group], service)
-			}
-
-		} else {
-			defaultList = append(defaultList, service)
-
-		}
-
-	}
-
-	Create := func(name, t string) *template.Template {
-		return template.Must(template.New(name).Parse(t))
-	}
-	f, err := os.Create("hosts")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	tmpl := Create("default", defaultTemplate)
-	err = tmpl.Execute(f, defaultList)
-	if err != nil {
-		return err
-	}
-	tmpl2 := Create("group", group)
-	err = tmpl2.Execute(f, inventory)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-var defaultTemplate = `{{range .}}{{.}}
-{{end -}}`
-var group = `{{range $key, $value := .}}
-[{{$key}}]
-{{range $value}}{{.}}
-{{end -}}
-{{end -}}
-`

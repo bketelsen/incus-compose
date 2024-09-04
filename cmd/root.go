@@ -35,6 +35,7 @@ import (
 	"github.com/bketelsen/incus-compose/pkg/application"
 	"github.com/bketelsen/incus-compose/pkg/build"
 	"github.com/bketelsen/incus-compose/pkg/compose"
+	"gopkg.in/yaml.v3"
 
 	dockercompose "github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
@@ -46,7 +47,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
 var debug bool
 var conf *config.Config
 var confPath string
@@ -136,7 +136,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		app, err = application.BuildDirect(project)
+		app, err = application.BuildDirect(project, conf)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ var rootCmd = &cobra.Command{
 			fmt.Println()
 			debugCompose()
 		}
-		app.SetConfig(conf)
+
 		return nil
 	},
 
@@ -183,7 +183,6 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.incus-compose.yaml)")
 	rootCmd.PersistentFlags().StringVar(&cwd, "cwd", "", "change working directory")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "print commands that would be executed without running them")
 
@@ -195,29 +194,10 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		// Search config in home directory with name ".incus-compose" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".incus-compose")
-	}
-
 	viper.AutomaticEnv() // read in environment variables that match
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	}
-
 }
-func globalPreRunHook(cmd *cobra.Command, args []string) {
+func globalPreRunHook(_ *cobra.Command, _ []string) {
 
 	// set up logging
 	slog.SetDefault(slog.New(
@@ -233,33 +213,6 @@ func globalPreRunHook(cmd *cobra.Command, args []string) {
 		logLevel.Set(getLogLevelFromEnv())
 	}
 
-	// load the compose file
-	// var err error
-	// var composeFileName = ""
-	// if len(args) > 0 {
-	// 	composeFileName = args[0]
-	// }
-	// cwd, err := os.Getwd()
-	// if err != nil {
-	// 	slog.Error("Loading yaml", slog.String("error", err.Error()))
-	// 	os.Exit(1)
-	// }
-	// app, err = application.Load(cwd, composeFileName)
-	// if err != nil {
-	// 	//	slog.Error("Loading yaml", slog.String("error", err.Error()))
-	// 	validationErrors, ok := err.(validator.ValidationErrors)
-	// 	if ok {
-	// 		for _, e := range validationErrors {
-	// 			slog.Error("Validation error", slog.String("namespace", e.StructNamespace()), slog.String("field", e.Field()), slog.String("error", e.Tag()))
-	// 		}
-	// 		os.Exit(1)
-
-	// 	} else {
-	// 		// this could be ok, for example when generating a new config
-	// 		// probably need to add a check for this in commands that expect a valid config
-	// 		slog.Info("No compose file found")
-	// 	}
-	// }
 }
 
 func getLogLevelFromEnv() slog.Level {
@@ -302,98 +255,13 @@ func configureLoader(cmd *cobra.Command) compose.Loader {
 }
 
 func debugCompose() {
-	fmt.Println("project name:", app.Name)
-	fmt.Println("default profiles:", app.Profiles)
-	fmt.Println("project:", app.Project)
+	fmt.Println("Compose:")
+	fmt.Println(app.String())
 
-	for sn, svc := range app.Services {
-		fmt.Println("service:", sn)
-		fmt.Println("	image:", svc.Image)
-		fmt.Println("	additional profiles:", svc.AdditionalProfiles)
-		fmt.Println("	cloud-init user data file:", svc.CloudInitUserDataFile)
-		fmt.Println("	depends on:", svc.DependsOn)
-		fmt.Println("	snapshot:", svc.Snapshot)
-		fmt.Println("	gpu:", svc.GPU)
-		for vn, vol := range svc.Volumes {
-			fmt.Println("	volume:", vn)
-			fmt.Println("		mountpoint:", vol.Mountpoint)
-			fmt.Println("		pool:", vol.Pool)
-			fmt.Println("		snapshot:", vol.Snapshot)
-		}
-		for bm, bind := range svc.BindMounts {
-			fmt.Println("	bind mount:", bm)
-			fmt.Println("		type:", bind.Type)
-			fmt.Println("		source:", bind.Source)
-			fmt.Println("		target:", bind.Target)
-			fmt.Println("		shift:", bind.Shift)
-		}
-		for k, v := range svc.Environment {
-			fmt.Printf("	environment: %q = %q\n", k, *v)
-		}
-
-	}
 }
 
 func debugProject() {
-	fmt.Println("project name:", project.Name)
-	fmt.Println("extensions:")
-
-	for k, v := range project.Extensions {
-		switch k {
-		case "x-incus-default-profiles", "x-incus-project":
-			fmt.Printf("	%q value: %q\n", k, v)
-
-			continue
-		default:
-			fmt.Printf("	unsupported compose extension: %q\n", k)
-		}
-	}
-
-	for _, svccfg := range project.Services {
-
-		fmt.Printf("service: %q image: %q\n", svccfg.Name, svccfg.Image)
-		fmt.Println("	extensions:")
-
-		for k, v := range svccfg.Extensions {
-			switch k {
-			case "x-incus-cloud-init-user-data-file", "x-incus-additional-profiles", "x-incus-snapshot", "x-incus-gpu":
-				fmt.Printf("		%q value: %q\n", k, v)
-
-				continue
-			default:
-				fmt.Printf("		unsupported compose extension: %q\n", k)
-			}
-		}
-		fmt.Println("	volumes:")
-
-		for _, vcfg := range svccfg.Volumes {
-			fmt.Printf("		%q target: %q\n", vcfg.Source, vcfg.Target)
-			for k, v := range vcfg.Extensions {
-				switch k {
-				case "x-incus-shift":
-					fmt.Printf("		extension: %q value: %v\n", k, v)
-
-					continue
-				default:
-					fmt.Printf("		unsupported compose extension: %q\n", k)
-				}
-			}
-		}
-	}
-	for _, volCfg := range project.Volumes {
-
-		fmt.Printf("volume: %q driver: %q\n", volCfg.Name, volCfg.Driver)
-		fmt.Println(volCfg.DriverOpts)
-		for k, v := range volCfg.Extensions {
-			switch k {
-			case "x-incus-snapshot":
-				fmt.Printf("volume %q: extension: %q value: %q\n", volCfg.Name, k, v)
-
-				continue
-			default:
-				fmt.Printf("volume %q: unsupported compose extension: %q\n", volCfg.Name, k)
-			}
-		}
-
-	}
+	fmt.Println("Project:")
+	bb, _ := yaml.Marshal(project)
+	fmt.Println(string(bb))
 }

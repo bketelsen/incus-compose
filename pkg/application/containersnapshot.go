@@ -4,19 +4,39 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
+	api "github.com/lxc/incus/v6/shared/api"
 )
 
 func (app *Compose) SnapshotInstance(service string, noexpiry, stateful, volumes bool) error {
 	slog.Info("Showing", slog.String("instance", service))
 
-	client, err := client.NewIncusClient()
+	return app.createSnapshot(service, snapshotName(service), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
+
+}
+
+func (app *Compose) createSnapshot(instanceName, snapshotName string, stateful bool, noexpiry bool, expiration time.Time) error {
+	d, err := app.getInstanceServer(instanceName)
 	if err != nil {
-		slog.Error(err.Error())
 		return err
 	}
-	client.WithProject(app.GetProject())
-	return client.SnapshotInstance(service, snapshotName(service), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
+
+	req := api.InstanceSnapshotsPost{
+		Name:     snapshotName,
+		Stateful: stateful,
+	}
+
+	if noexpiry {
+		req.ExpiresAt = &time.Time{}
+	} else if !expiration.IsZero() {
+		req.ExpiresAt = &expiration
+	}
+
+	op, err := d.CreateInstanceSnapshot(instanceName, req)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
 
 }
 

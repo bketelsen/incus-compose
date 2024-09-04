@@ -1,30 +1,95 @@
 package application
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"time"
 
-	"github.com/bketelsen/incus-compose/pkg/incus/client"
+	incus "github.com/lxc/incus/v6/client"
+	api "github.com/lxc/incus/v6/shared/api"
 )
 
 func (app *Compose) ExportVolume(pool, volume string) error {
 
 	slog.Info("Exporting", slog.String("volume", volume))
 
-	client, err := client.NewIncusClient()
-	if err != nil {
-		slog.Error(err.Error())
-		return err
-	}
-	client.WithProject(app.GetProject())
-	// make sure app.ExportPath exists
-	if err := os.MkdirAll(app.ExportPath, 0755); err != nil {
-		return err
-	}
 	fullExportPath := filepath.Join(app.ExportPath, exportName(volume))
 	slog.Info("Export File", slog.String("path", fullExportPath))
 
-	return client.ExportVolume(pool, volume, fullExportPath)
+	return app.volumeExport(pool, volume, fullExportPath)
 
+}
+
+func (app *Compose) volumeExport(pool, volume, targetName string) error {
+	// Parse remote
+	resources, err := app.ParseServers(pool)
+	if err != nil {
+		return err
+	}
+
+	resource := resources[0]
+	if resource.name == "" {
+		return fmt.Errorf("Missing pool name")
+	}
+	req := api.StoragePoolVolumeBackupsPost{
+		Name:             "",
+		ExpiresAt:        time.Now().Add(24 * time.Hour),
+		VolumeOnly:       true,
+		OptimizedStorage: false,
+	}
+
+	op, err := resource.server.CreateStoragePoolVolumeBackup(pool, volume, req)
+	if err != nil {
+		return fmt.Errorf("failed to create storage volume backup: %w", err)
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return err
+	}
+
+	// Get name of backup
+	uStr := op.Get().Resources["backups"][0]
+	u, err := url.Parse(uStr)
+	if err != nil {
+		return fmt.Errorf("invalid URL %q: %w", uStr, err)
+	}
+
+	backupName, err := url.PathUnescape(path.Base(u.EscapedPath()))
+	if err != nil {
+		return fmt.Errorf("invalid backup name segment in path %q: %w", u.EscapedPath(), err)
+	}
+
+	defer func() {
+		// Delete backup after we're done
+		op, err = resource.server.DeleteStoragePoolVolumeBackup(pool, volume, backupName)
+		if err == nil {
+			_ = op.Wait()
+		}
+	}()
+
+	target, err := os.Create(targetName)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = target.Close() }()
+
+	backupFileRequest := incus.BackupFileRequest{
+		BackupFile: io.WriteSeeker(target),
+	}
+
+	// Export tarball
+	_, err = resource.server.GetStoragePoolVolumeBackupFile(pool, volume, backupName, &backupFileRequest)
+	if err != nil {
+		_ = os.Remove(targetName)
+		return fmt.Errorf("failed to fetch storage volume backup file: %w", err)
+	}
+
+	return nil
 }
