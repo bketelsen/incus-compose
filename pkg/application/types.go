@@ -14,6 +14,7 @@ type Compose struct {
 	ExportPath     string                      `yaml:"export_path,omitempty"`
 	Dag            graph.Graph[string, string] `yaml:"-"`
 	ComposeProject *types.Project              `yaml:"-"`
+	SecretsFiles   map[string]SecretsFile      `yaml:secretsfiles,omitempty"`
 	conf           *config.Config
 }
 
@@ -32,6 +33,7 @@ type Service struct {
 	DependsOn             []string           `yaml:"depends_on,omitempty"`
 	InventoryGroups       []string           `yaml:"inventory_groups,omitempty"`
 	Storage               string             `yaml:"storage,omitempty"`
+	Secrets               map[string]Secret  `yaml:"secrets,omitempty"`
 }
 
 type Snapshot struct {
@@ -52,4 +54,12 @@ type Bind struct {
 	Source string `yaml:"source"`
 	Target string `yaml:"target"`
 	Shift  bool   `yaml:"shift,omitempty"`
+}
+
+type Secret struct {
+	MountPoint string `yaml:"filepath,omitempty"`
+}
+
+type SecretsFile struct {
+	FilePath string `yaml:"filepath,omitempty"`
 }

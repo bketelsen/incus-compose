@@ -3,9 +3,11 @@ package application
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"slices"
 	"strings"
 
+	incus "github.com/lxc/incus/v6/client"
 	api "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -85,6 +87,24 @@ func (app *Compose) AttachVolumesForService(service string) error {
 		err := app.attachVolume(vol.CreateName(app.Name, service, volName), service, *vol)
 		if err != nil {
 			return err
+		}
+	}
+
+	// add secrets files
+	if len(svc.Secrets) == 0 {
+		return nil
+	}
+
+	for k, v := range svc.Secrets {
+		secretsFileId := fmt.Sprintf("%s_%s", app.Name, k)
+
+		sf, ok := app.SecretsFiles[secretsFileId]
+		if ok {
+			err := app.createAndWriteToFile(sf.FilePath, v.MountPoint, service)
+			if err != nil {
+				return err
+			}
+
 		}
 	}
 
@@ -240,4 +260,45 @@ func parseVolume(defaultType string, name string) (string, string) {
 	}
 
 	return parsedName[1], parsedName[0]
+}
+
+func (app *Compose) createAndWriteToFile(pathToFile, mountPath, service string) error {
+	slog.Info("Creating file", slog.String("file path", mountPath))
+
+	d, err := app.getInstanceServer(service)
+	if err != nil {
+		return err
+	}
+	d.UseProject(app.GetProject())
+
+	_, f, _ := d.GetInstanceFile(service, mountPath)
+	if f != nil {
+		// TODO
+		fmt.Println("File content: ", f)
+	}
+
+	// DeleteInstanceFile()
+
+	secret, err := os.Open(pathToFile)
+	if err != nil {
+		return err
+	}
+	defer secret.Close()
+
+	fSecret := incus.InstanceFileArgs{}
+	fSecret.Content = secret
+	fSecret.UID = -1
+	fSecret.GID = -1
+	fSecret.Mode = 644
+	// fSecret.Mode = 0777 // Unix permission bits
+	fSecret.Type = "file"
+	fSecret.WriteMode = "overwrite"
+
+	fmt.Printf("Creating new file: service: %s, path: %s, secretfile: %v\n", service, mountPath, fSecret)
+	err = d.CreateInstanceFile(service, mountPath, fSecret)
+	if err != nil {
+		return fmt.Errorf("Error creating file: %w", err)
+	}
+
+	return nil
 }
