@@ -102,74 +102,27 @@ func (app *Compose) DeleteCloudProfileForService(service string) error {
 
 func (app *Compose) InitContainerForService(service string) error {
 	slog.Info("Initialize", slog.String("instance", service))
-	/*
-		svc, ok := app.Services[service]
-		if !ok {
-			return fmt.Errorf("service %s not found", service)
-		}
-		args := []string{"init", svc.Image, service}
-		args = append(args, "--project", app.GetProject())
-
-		for _, profile := range app.GetProfiles() {
-			args = append(args, "--profile", profile)
-		}
-		for _, addProfile := range svc.AdditionalProfiles {
-			args = append(args, "--profile", addProfile)
-		}
-
-		needsProfile, err := app.ServiceNeedsInitProfile(service)
-		if err != nil {
-			return err
-		}
-		if needsProfile {
-			initProfile, err := app.CreateCloudProfileForService(service)
-			if err != nil {
-				return err
-			}
-			if initProfile != "" {
-				args = append(args, "--profile", initProfile)
-			}
-		}
-		if svc.EnvironmentFile != "" {
-			args = append(args, "--environment-file", svc.EnvironmentFile)
-		}
-		if svc.Snapshot != nil {
-			if svc.Snapshot.Schedule != "" {
-				args = append(args, "--config=snapshots.schedule="+"\""+svc.Snapshot.Schedule+"\"")
-			}
-			if svc.Snapshot.Pattern != "" {
-				args = append(args, "--config=snapshots.pattern="+"\""+svc.Snapshot.Pattern+"\"")
-			}
-			if svc.Snapshot.Expiry != "" {
-				args = append(args, "--config=snapshots.expiry="+"\""+svc.Snapshot.Expiry+"\"")
-			}
-		}
-		slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
-
-		out, err := incus.ExecuteShellStream(context.Background(), args)
-		if err != nil {
-			slog.Error("Incus error", slog.String("message", out))
-			return err
-		}
-		slog.Debug("Incus ", slog.String("message", out))
-	*/
 
 	var image string
-	var remote string
 	var iremote string
-	var name string
 
 	sc, err := app.ComposeProject.GetService(service)
 	if err != nil {
 		return err
 	}
-	client, err := client.NewIncusClient()
+
+	// Parse the remote
+	remote, name, err := app.conf.ParseRemote(service)
 	if err != nil {
 		return err
 	}
-	client.WithProject(app.GetProject())
 
-	inst, _, _ := client.GetInstance(service)
+	d, err := app.conf.GetInstanceServer(remote)
+	if err != nil {
+		return err
+	}
+
+	inst, _, _ := d.GetInstance(service)
 	if inst != nil && inst.Name == service {
 		slog.Info("Instance found", slog.String("instance", service))
 		return nil
@@ -253,7 +206,7 @@ func (app *Compose) InitContainerForService(service string) error {
 		for net := range sc.Networks {
 			netName := fmt.Sprintf("eth%d", networkNumber)
 
-			network, _, err := client.GetNetwork(net)
+			network, _, err := d.GetNetwork(net)
 			if err != nil {
 				return fmt.Errorf("failed loading network %q: %w", net, err)
 			}
@@ -261,7 +214,7 @@ func (app *Compose) InitContainerForService(service string) error {
 			// Prepare the instance's NIC device entry.
 			var device map[string]string
 
-			if network.Managed && client.HasExtension("instance_nic_network") {
+			if network.Managed && d.HasExtension("instance_nic_network") {
 				// If network is snapmanaged, use the network property rather than nictype, so that the
 				// network's inherited properties are loaded into the NIC when started.
 				device = map[string]string{
@@ -296,7 +249,7 @@ func (app *Compose) InitContainerForService(service string) error {
 
 	// overridden storage
 	if storageOverride != "" {
-		_, _, err := client.GetStoragePool(storageOverride)
+		_, _, err := d.GetStoragePool(storageOverride)
 		if err != nil {
 			return fmt.Errorf("failed loading storage pool %q: %w", storageOverride, err)
 		}
@@ -340,31 +293,28 @@ func (app *Compose) InitContainerForService(service string) error {
 
 	instancePost.Devices = devicesMap
 
-	iremote, image, err = app.config.ParseRemote(sc.Image)
-	if err != nil {
-		return err
-	}
-	remote, name, err = app.config.ParseRemote(sc.Name)
-	if err != nil {
-		return err
-	}
-	iremote, image = guessImage(app.config, client.Client(), remote, iremote, image)
-	// Deal with the default image
-	if image == "" {
-		image = "default"
-	}
-	imgRemote, imgInfo, err := getImgInfo(client.Client(), app.config, iremote, remote, image, &instancePost.Source)
+	iremote, image, err = app.conf.ParseRemote(sc.Image)
 	if err != nil {
 		return err
 	}
 
-	if app.config.Remotes[iremote].Protocol == "incus" {
+	iremote, image = guessImage(app.conf, d, remote, iremote, image)
+	// Deal with the default image
+	if image == "" {
+		image = "default"
+	}
+	imgRemote, imgInfo, err := getImgInfo(d, app.conf, iremote, remote, image, &instancePost.Source)
+	if err != nil {
+		return err
+	}
+
+	if app.conf.Remotes[iremote].Protocol == "incus" {
 
 		instancePost.Type = api.InstanceType(imgInfo.Type)
 	}
 	fmt.Println(instancePost)
 
-	op, err := client.Client().CreateInstanceFromImage(imgRemote, *imgInfo, instancePost)
+	op, err := d.CreateInstanceFromImage(imgRemote, *imgInfo, instancePost)
 	if err != nil {
 		return err
 	}

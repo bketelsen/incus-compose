@@ -37,7 +37,7 @@ services:
       - DRONE_GITEA_CLIENT_ID=XXX-XXX # change this to your client ID from Gitea; see https://docs.drone.io/server/provider/gitea/
       - DRONE_GITEA_CLIENT_SECRET=XXX-XXX # change this to your client secret from Gitea; see https://docs.drone.io/server/provider/gitea/
     networks:
-      - br0.5 
+      - br0
     depends_on:
       - drone-agent
     labels:
@@ -62,10 +62,10 @@ services:
       - DRONE_RPC_SECRET=8aff725d2e16ef31fbc42
       - DRONE_RUNNER_CAPACITY=2
     networks:
-      - br0.5
+      - br0
 
 networks:
-  br0.5:
+  br0:
     external: true
 
 volumes:

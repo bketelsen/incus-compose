@@ -67,7 +67,7 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 		if err != nil {
 			return err
 		}
-		err = app.RemoveContainerForService(service)
+		err = app.RemoveContainerForService(service, force)
 		if err != nil {
 			return err
 		}
@@ -112,12 +112,12 @@ func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
 		slog.Info("Instance snapshot complete", slog.String("instance", service))
 		if volumes {
 			for volName, vol := range app.Services[service].Volumes {
-				slog.Info("Volume snapshot start", slog.String("volume", vol.Name(app.Name, service, volName)))
-				err := app.SnapshotVolume(vol.Pool, vol.Name(app.Name, service, volName), noexpiry, stateful, volumes)
+				slog.Info("Volume snapshot start", slog.String("volume", vol.CreateName(app.Name, service, volName)))
+				err := app.SnapshotVolume(vol.Pool, vol.CreateName(app.Name, service, volName), noexpiry, stateful, volumes)
 				if err != nil {
 					return err
 				}
-				slog.Info("Volume snapshot complete", slog.String("volume", vol.Name(app.Name, service, volName)))
+				slog.Info("Volume snapshot complete", slog.String("volume", vol.CreateName(app.Name, service, volName)))
 			}
 		}
 
@@ -139,12 +139,12 @@ func (app *Compose) Export(volumes bool, customVolumesOnly bool) error {
 		}
 		if customVolumesOnly {
 			for volName, vol := range app.Services[service].Volumes {
-				slog.Info("Volume export start", slog.String("volume", vol.Name(app.Name, service, volName)))
-				err := app.ExportVolume(vol.Pool, vol.Name(app.Name, service, volName))
+				slog.Info("Volume export start", slog.String("volume", vol.CreateName(app.Name, service, volName)))
+				err := app.ExportVolume(vol.Pool, vol.CreateName(app.Name, service, volName))
 				if err != nil {
 					return err
 				}
-				slog.Info("Volume export complete", slog.String("volume", vol.Name(app.Name, service, volName)))
+				slog.Info("Volume export complete", slog.String("volume", vol.CreateName(app.Name, service, volName)))
 			}
 		}
 
@@ -189,7 +189,7 @@ func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 				}
 			}
 		}
-		err := app.RemoveContainerForService(service)
+		err := app.RemoveContainerForService(service, force)
 		if err != nil {
 			if strings.Contains(err.Error(), "running") {
 				slog.Error("Instance currently running", slog.String("instance", service))

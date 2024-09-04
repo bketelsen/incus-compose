@@ -17,6 +17,7 @@ func parseService(s types.ServiceConfig) Service {
 		fmt.Println(dep, cfg)
 		service.DependsOn = append(service.DependsOn, dep)
 	}
+	service.Name = s.Name
 	service.Environment = make(map[string]*string)
 	for k, v := range s.Environment {
 		service.Environment[k] = v

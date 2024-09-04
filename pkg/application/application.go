@@ -2,16 +2,12 @@ package application
 
 import (
 	"log/slog"
-	"os"
 	"slices"
 
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
 	config "github.com/lxc/incus/v6/shared/cliconfig"
-	"gopkg.in/yaml.v3"
 )
-
-var defaultNames = []string{"incus-compose.yaml", "incus-compose.yml"}
 
 type Compose struct {
 	Name           string                      `yaml:"name" validate:"required"`
@@ -21,10 +17,11 @@ type Compose struct {
 	ExportPath     string                      `yaml:"export_path,omitempty"`
 	Dag            graph.Graph[string, string] `yaml:"-"`
 	ComposeProject *types.Project              `yaml:"-"`
-	config         *config.Config
+	conf           *config.Config
 }
 
 type Service struct {
+	Name                  string             `yaml:"name" validate:"required"`
 	Image                 string             `yaml:"image" validate:"required"`
 	GPU                   bool               `yaml:"gpu,omitempty"`
 	Volumes               map[string]*Volume `yaml:"volumes,omitempty" validate:"dive,required"`
@@ -47,6 +44,7 @@ type Snapshot struct {
 }
 
 type Volume struct {
+	Name       string    `yaml:"name,omitempty"`
 	Mountpoint string    `yaml:"mountpoint"`
 	Pool       string    `yaml:"pool" validate:"pool-exists"`
 	Snapshot   *Snapshot `yaml:"snapshot,omitempty"`
@@ -59,110 +57,8 @@ type Bind struct {
 	Shift  bool   `yaml:"shift,omitempty"`
 }
 
-func Load(workdir, path string) (Compose, error) {
-
-	app := Compose{}
-	if path == "" {
-		slog.Debug("Searching for compose file")
-		path = firstExistingFile(defaultNames)
-	}
-
-	slog.Debug("Using compose file", slog.String("path", path))
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return app, err
-	}
-	err = yaml.Unmarshal(data, &app)
-	if err != nil {
-		return app, err
-	}
-	g := graph.New(graph.StringHash, graph.Directed(), graph.Acyclic())
-	for name := range app.Services {
-		_ = g.AddVertex(name)
-	}
-	for name := range app.Services {
-		for _, dep := range app.Services[name].DependsOn {
-			_ = g.AddEdge(name, dep)
-		}
-	}
-	app.Dag = g
-
-	err = app.Validate()
-	if err != nil {
-		return app, err
-	}
-	return app, nil
-}
-
-func firstExistingFile(files []string) string {
-	for _, f := range files {
-		if _, err := os.Stat(f); err == nil {
-			return f
-		}
-	}
-	return ""
-}
-
 func Generate(path string) error {
-	app := Compose{}
-	app.Name = "testapp"
-	app.Project = "testproject"
-	app.Profiles = []string{"default", "profile1"}
 
-	service := Service{}
-	service.Image = "images:ubuntu/noble/cloud"
-	service.GPU = false
-	service.AdditionalProfiles = []string{"profile2"}
-	service.CloudInitUserDataFile = "testapp.yaml"
-	service.DependsOn = []string{"dbservice"}
-
-	volume := Volume{}
-	volume.Mountpoint = "/metadata"
-	volume.Pool = "slowpool"
-
-	bind := Bind{}
-	bind.Type = "disk"
-	bind.Source = "/mnt/media"
-	bind.Target = "/media"
-	bind.Shift = true
-
-	service.Volumes = map[string]*Volume{
-		"metadatavolume": &volume,
-	}
-	service.BindMounts = map[string]Bind{
-		"mediabind": bind,
-	}
-	service.Snapshot = &Snapshot{
-		Schedule: "@daily",
-		Expiry:   "14d",
-	}
-
-	service2 := Service{}
-	service2.Image = "docker:postgres"
-
-	volume2 := Volume{}
-	volume2.Mountpoint = "/data"
-	volume2.Pool = "fast"
-	volume2.Snapshot = &Snapshot{
-		Schedule: "@hourly",
-		Expiry:   "7d",
-	}
-	service2.Volumes = map[string]*Volume{
-		"data": &volume2,
-	}
-	app.Services = map[string]Service{
-		"testservice": service,
-		"dbservice":   service2,
-	}
-	data, err := yaml.Marshal(app)
-	if err != nil {
-		return err
-
-	}
-	err = os.WriteFile(path, data, 0644)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -180,10 +76,6 @@ func (app *Compose) GetProfiles() []string {
 		return []string{"default"}
 	}
 	return app.Profiles
-}
-
-func (app *Compose) SetConfig(config *config.Config) {
-	app.config = config
 }
 
 // Order returns the order in which services should be started or stopped.

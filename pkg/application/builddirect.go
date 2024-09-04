@@ -7,13 +7,15 @@ import (
 	"fmt"
 
 	"github.com/compose-spec/compose-go/v2/types"
+	cliconfig "github.com/lxc/incus/v6/shared/cliconfig"
 )
 
-func BuildDirect(p *types.Project) (*Compose, error) {
+func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 	compose := &Compose{}
 	compose.ComposeProject = p
 	compose.Name = p.Name
 	compose.Project = "default"
+	compose.conf = conf
 
 	// parse extensions
 	for k, v := range p.Extensions {
