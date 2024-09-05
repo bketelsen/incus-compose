@@ -9,10 +9,10 @@ services:
     # x-incus-cloud-init-user-data-file: trixie.yaml
     x-incus-gpu: true
     volumes:
-      - /home/aluk/myvolume/:./drone/data
+      - /home/bjk/setup/:./drone/data
       - myvolume:/mnt/drone/myvolume
       - type: bind
-        source: /home/aluk/incustemp
+        source: /home/bjk/setup
         target: /mnt/drone/myhome
         x-incus-shift: true
     environment:
@@ -67,7 +67,7 @@ volumes:
       expiry: 2d
     driver: incus
     driver_opts:
-      pool: "fast"
+      pool: "default"
 
 secrets:
   da_test_secret:

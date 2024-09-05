@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -295,9 +297,71 @@ func (app *Compose) createAndWriteToFile(pathToFile, mountPath, service string) 
 	fSecret.WriteMode = "overwrite"
 
 	fmt.Printf("Creating new file: service: %s, path: %s, secretfile: %v\n", service, mountPath, fSecret)
+	err = app.recursiveMkdir(d, service, path.Dir("/run/secrets/"), nil, int64(0), int64(0))
+	if err != nil {
+		return err
+	}
 	err = d.CreateInstanceFile(service, mountPath, fSecret)
 	if err != nil {
 		return fmt.Errorf("Error creating file: %w", err)
+	}
+
+	return nil
+}
+
+func (app *Compose) recursiveMkdir(d incus.InstanceServer, inst string, p string, mode *os.FileMode, uid int64, gid int64) error {
+	/* special case, every instance has a /, we don't need to do anything */
+	if p == "/" {
+		return nil
+	}
+
+	// Remove trailing "/" e.g. /A/B/C/. Otherwise we will end up with an
+	// empty array entry "" which will confuse the Mkdir() loop below.
+	pclean := filepath.Clean(p)
+	parts := strings.Split(pclean, "/")
+	i := len(parts)
+
+	for ; i >= 1; i-- {
+		cur := filepath.Join(parts[:i]...)
+		_, resp, err := d.GetInstanceFile(inst, cur)
+		if err != nil {
+			continue
+		}
+
+		if resp.Type != "directory" {
+			return fmt.Errorf("%s is not a directory", cur)
+		}
+
+		i++
+		break
+	}
+
+	for ; i <= len(parts); i++ {
+		cur := filepath.Join(parts[:i]...)
+		if cur == "" {
+			continue
+		}
+
+		cur = "/" + cur
+
+		modeArg := -1
+		if mode != nil {
+			modeArg = int(mode.Perm())
+		}
+
+		args := incus.InstanceFileArgs{
+			UID:  uid,
+			GID:  gid,
+			Mode: modeArg,
+			Type: "directory",
+		}
+
+		slog.Info("Creating directory", slog.String("path", cur))
+
+		err := d.CreateInstanceFile(inst, cur, args)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
