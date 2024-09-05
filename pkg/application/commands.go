@@ -8,7 +8,12 @@ import (
 	"github.com/bketelsen/incus-compose/pkg/ui"
 )
 
+// keep all the external commands in one place
 func (app *Compose) Up() error {
+	err := app.SanityCheck()
+	if err != nil {
+		return err
+	}
 
 	for _, service := range app.Order(true) {
 
