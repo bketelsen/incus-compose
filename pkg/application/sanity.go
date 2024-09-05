@@ -78,6 +78,12 @@ func (app *Compose) SanityCheck() error {
 		}
 	}
 	netNames, err = d.GetNetworkNames()
+	if err != nil {
+		return &SanityCheckError{
+			Step: "get network names",
+			Err:  fmt.Errorf("error getting network names: %s", err),
+		}
+	}
 	// check to see if the default profiles exists
 	for _, p := range app.Profiles {
 		if !slices.Contains(profileNames, p) {
