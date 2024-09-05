@@ -14,7 +14,5 @@ USE AT YOUR OWN RISK
 
 ## Usage
 
-See the samples in the `samples` directory.
-
-## Explanation
+See the samples in the `samples` directory. Some of them use `x-` attributes to control how `incus-compose` handles a resource.
 
