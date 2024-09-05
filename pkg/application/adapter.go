@@ -65,7 +65,6 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 			case "x-incus-snapshot":
 				snapshot, ok := v.(map[string]interface{})
 				if ok {
-					//fmt.Println("parsed snapshot", snapshot)
 					snap = &Snapshot{}
 					for k, v := range snapshot {
 						switch k {
@@ -91,7 +90,6 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 		for _, s := range compose.Services {
 			for k, v := range s.Volumes {
 				fullVolName := p.Name + "_" + k
-				fmt.Println("fullVolName, k, vol.Name", fullVolName, k, vol.Name)
 				if fullVolName == vol.Name {
 					v.Pool = pool
 					v.Snapshot = snap
@@ -104,9 +102,7 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 }
 func parseService(s types.ServiceConfig) Service {
 	service := Service{}
-	fmt.Println("depends", s.DependsOn)
-	for dep, cfg := range s.DependsOn {
-		fmt.Println(dep, cfg)
+	for dep := range s.DependsOn {
 		service.DependsOn = append(service.DependsOn, dep)
 	}
 	service.Name = s.Name
@@ -205,9 +201,6 @@ func parseService(s types.ServiceConfig) Service {
 
 	service.Image = s.Image
 
-	for k := range s.Networks {
-		fmt.Println("network", k)
-	}
 	return service
 
 }

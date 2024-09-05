@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/spf13/cobra"
@@ -34,12 +33,7 @@ var infoCmd = &cobra.Command{
 	Args: cobra.MaximumNArgs(1),
 
 	Short: "Display information about instances",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long:  `Display information about instances`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		slog.Info("Info", slog.String("app", app.Name))
@@ -48,29 +42,10 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			slog.Error("Info", slog.String("error", err.Error()))
 		}
-		fmt.Println(app.ListServices())
-		fmt.Println(app.DependentsForService("drone-agent"))
-		err = app.StopAll(false, false, -1)
-		if err != nil {
-			slog.Error("Stop", slog.String("error", err.Error()))
-		}
-		err = app.StartAll(true)
-		if err != nil {
-			slog.Error("Start", slog.String("error", err.Error()))
-		}
+
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(infoCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// infoCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// infoCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

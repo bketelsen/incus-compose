@@ -42,7 +42,7 @@ func (app *Compose) volumeExport(pool, volume, targetName string) error {
 		VolumeOnly:       true,
 		OptimizedStorage: false,
 	}
-
+	resource.server.UseProject(app.GetProject())
 	op, err := resource.server.CreateStoragePoolVolumeBackup(pool, volume, req)
 	if err != nil {
 		return fmt.Errorf("failed to create storage volume backup: %w", err)

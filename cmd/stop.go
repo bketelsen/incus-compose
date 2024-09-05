@@ -33,16 +33,10 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Args:  cobra.MaximumNArgs(1),
 	Short: "Stop instances",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long:  `Stop instances`,
 	Run: func(cmd *cobra.Command, args []string) {
 		slog.Info("Stop", slog.String("app", app.Name))
 
-		//	incus.Execute(context.Background(), []string{"ls"})
 		err := app.Stop(cmd.Flag("stateful").Changed, cmd.Flag("force").Changed, timeout)
 		if err != nil {
 			fmt.Println(err)
@@ -52,16 +46,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(stopCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// stopCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// stopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	stopCmd.Flags().BoolP("stateful", "s", false, "Stop stateful instance, if supported")
 	stopCmd.Flags().BoolP("force", "f", false, "Force stop instance")
 	stopCmd.Flags().IntVarP(&timeout, "timeout", "t", -1, "Specify a shutdown timeout in seconds")

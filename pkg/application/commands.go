@@ -27,10 +27,6 @@ func (app *Compose) Up() error {
 			return err
 		}
 
-		// err = app.CreateGPUForService(service)
-		// if err != nil {
-		// 	return err
-		// }
 		err = app.AttachVolumesForService(service)
 		if err != nil {
 			return err
@@ -191,16 +187,7 @@ func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 				return err
 			}
 		}
-		// 	needsProfile, err := app.ServiceNeedsInitProfile(service)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	if needsProfile {
-		// 		err = app.DeleteCloudProfileForService(service)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 	}
+
 	}
 	return nil
 }
@@ -215,6 +202,7 @@ func (app *Compose) Info() error {
 		if err != nil {
 			return err
 		}
+		d.UseProject(app.GetProject())
 
 		i, _, err := d.GetInstance(service)
 		if err != nil {

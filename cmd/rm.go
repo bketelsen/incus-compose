@@ -42,7 +42,6 @@ declared in the compose file are not removed. You can override this with the
 
 		slog.Info("Removing", slog.String("app", app.Name))
 
-		//	incus.Execute(context.Background(), []string{"ls"})
 		err := app.Remove(timeout, cmd.Flag("force").Changed, cmd.Flag("stop").Changed, cmd.Flag("volumes").Changed)
 		if err != nil {
 			slog.Error("Remove", slog.String("error", err.Error()))
@@ -53,15 +52,6 @@ declared in the compose file are not removed. You can override this with the
 func init() {
 	rootCmd.AddCommand(rmCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// rmCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// rmCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rmCmd.Flags().BoolP("force", "f", false, "Don't ask for confirmation before removing instances")
 	rmCmd.Flags().BoolP("stop", "s", false, "Stop the instances, if required, before removing")
 	rmCmd.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the compose file")
