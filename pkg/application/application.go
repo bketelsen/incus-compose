@@ -7,11 +7,6 @@ import (
 	"github.com/dominikbraun/graph"
 )
 
-func Generate(path string) error {
-
-	return nil
-}
-
 func (app *Compose) GetProject() string {
 	if app.Project == "" {
 		slog.Debug("Using default project")

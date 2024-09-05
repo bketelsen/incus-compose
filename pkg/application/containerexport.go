@@ -33,6 +33,9 @@ func (app *Compose) instanceExport(instanceName, targetName string, instanceOnly
 	if err != nil {
 		return err
 	}
+
+	d.UseProject(app.GetProject())
+
 	req := api.InstanceBackupsPost{
 		Name:             "",
 		ExpiresAt:        time.Now().Add(24 * time.Hour),

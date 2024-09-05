@@ -147,6 +147,7 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 	}
 
 	client := resource.server
+	client.UseProject(app.GetProject())
 	err = client.CreateStoragePoolVolume(vol.Pool, newvol)
 	if err != nil {
 		return err
@@ -169,6 +170,7 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 	}
 
 	client := resource.server
+	client.UseProject(app.GetProject())
 
 	// Parse the input
 	volName, volType := parseVolume("custom", vol.Name)
@@ -195,6 +197,7 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 	if err != nil {
 		return err
 	}
+	d.UseProject(app.GetProject())
 
 	instance, etag, err := d.GetInstance(service)
 	if err != nil {

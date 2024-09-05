@@ -39,7 +39,6 @@ Optionally remove custom storage volumes declared in the compose file, with the 
 	Run: func(cmd *cobra.Command, args []string) {
 		slog.Info("Down", slog.String("app", app.Name))
 
-		//	incus.Execute(context.Background(), []string{"ls"})
 		err := app.Down(cmd.Flag("force").Changed, cmd.Flag("volumes").Changed, timeout)
 		if err != nil {
 			fmt.Println(err)

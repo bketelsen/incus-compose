@@ -52,6 +52,7 @@ func (app *Compose) StopContainerForService(service string, stateful, force bool
 	if err != nil {
 		return err
 	}
+	d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(service)
 	if inst != nil && inst.Name == service && inst.Status == "Running" {
@@ -77,6 +78,8 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 	if err != nil {
 		return err
 	}
+
+	d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(service)
 	if inst != nil && inst.Name == service && inst.Status == "Running" {
@@ -143,6 +146,8 @@ func (app *Compose) InitContainerForService(service string) error {
 	if err != nil {
 		return err
 	}
+
+	d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(service)
 	if inst != nil && inst.Name == service {
@@ -349,7 +354,6 @@ func (app *Compose) InitContainerForService(service string) error {
 
 		instancePost.Type = api.InstanceType(imgInfo.Type)
 	}
-	fmt.Println(instancePost)
 
 	op, err := d.CreateInstanceFromImage(imgRemote, *imgInfo, instancePost)
 	if err != nil {
@@ -359,7 +363,7 @@ func (app *Compose) InitContainerForService(service string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(name)
+	slog.Info("Created instance", slog.String("name", name))
 
 	return nil
 
@@ -375,6 +379,8 @@ func (app *Compose) updateInstanceState(name string, state string, timeout int, 
 	if err != nil {
 		return err
 	}
+
+	d.UseProject(app.GetProject())
 
 	req := api.InstanceStatePut{
 		Action:   state,
@@ -409,7 +415,7 @@ func (app *Compose) removeInstance(name string, force bool) error {
 	}
 
 	// Check that everything exists.
-	err = instancesExist(resources)
+	err = app.instancesExist(resources)
 	if err != nil {
 		return err
 	}
@@ -519,6 +525,8 @@ func (app *Compose) addDevice(instance, name string, device map[string]string) e
 	if err != nil {
 		return err
 	}
+	d.UseProject(app.GetProject())
+
 	inst, etag, err := d.GetInstance(instance)
 	if err != nil {
 		return err
