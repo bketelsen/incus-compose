@@ -26,11 +26,36 @@ func (app *Compose) CreateBindsForService(service string) error {
 		if bind.Shift {
 			device["shift"] = "true"
 		}
-		err := app.addDevice(service, bindName, device)
+
+		// check for existing bind
+		d, err := app.getInstanceServer(service)
+		if err != nil {
+			return err
+		}
+		d.UseProject(app.GetProject())
+
+		inst, etag, err := d.GetInstance(service)
 		if err != nil {
 			return err
 		}
 
+		_, ok := inst.Devices[bindName]
+		if ok {
+			slog.Info("Device already exists", slog.String("name", bindName))
+			return nil
+		}
+
+		inst.Devices[bindName] = device
+
+		op, err := d.UpdateInstance(service, inst.Writable(), etag)
+		if err != nil {
+			return err
+		}
+
+		err = op.Wait()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

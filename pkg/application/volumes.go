@@ -3,7 +3,9 @@ package application
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
+	"sort"
 	"strings"
 
 	api "github.com/lxc/incus/v6/shared/api"
@@ -21,17 +23,17 @@ func (app *Compose) CreateVolumesForService(service string) error {
 		completeName := vol.CreateName(app.Name, service, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		// existingVolume, _ := app.showVolume(completeName, *vol)
+		existingVolume, _ := app.showVolume(service, completeName, *vol)
 
-		// if existingVolume != nil && completeName == existingVolume.Name {
-		// 	slog.Info("Volume found", slog.String("volume", completeName))
-		// } else {
-		fmt.Println("Creating volume", completeName, vol)
-		err := app.createVolume(completeName, *vol)
-		if err != nil {
-			return err
+		if existingVolume != nil && completeName == existingVolume.Name {
+			slog.Info("Volume found", slog.String("volume", completeName))
+		} else {
+			fmt.Println("Creating volume", completeName, vol)
+			err := app.createVolume(completeName, *vol)
+			if err != nil {
+				return err
+			}
 		}
-		// }
 	}
 
 	return nil
@@ -240,4 +242,30 @@ func parseVolume(defaultType string, name string) (string, string) {
 	}
 
 	return parsedName[1], parsedName[0]
+}
+
+func (app *Compose) showVolume(service, name string, vol Volume) (*api.StorageVolume, error) {
+
+	d, err := app.getInstanceServer(service)
+	if err != nil {
+		return nil, err
+	}
+	d.UseProject(app.GetProject())
+
+	volName, volType := parseVolume("custom", name)
+
+	volume, _, err := d.GetStoragePoolVolume(vol.Pool, volType, volName)
+	if err != nil {
+		if api.StatusErrorCheck(err, http.StatusNotFound) {
+			if volType == "custom" {
+				return nil, fmt.Errorf("Storage pool volume \"%s/%s\" not found. Try virtual-machine or container for type", volType, volName)
+			}
+			return nil, fmt.Errorf("Storage pool volume \"%s/%s\" notfound", volType, volName)
+		}
+		return nil, err
+	}
+
+	sort.Strings(volume.UsedBy)
+
+	return volume, nil
 }
