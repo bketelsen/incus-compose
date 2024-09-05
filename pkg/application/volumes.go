@@ -65,11 +65,16 @@ func (app *Compose) DeleteVolumesForService(service string) error {
 		completeName := vol.CreateName(app.Name, service, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		err := app.deleteVolume(completeName, *vol)
-		if err != nil {
-			return err
-		}
+		existingVolume, _ := app.showVolume(service, completeName, *vol)
 
+		if existingVolume == nil || completeName != existingVolume.Name {
+			slog.Info("Volume not found", slog.String("volume", completeName))
+		} else {
+			err := app.deleteVolume(completeName, *vol)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -151,7 +156,6 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 }
 
 func (app *Compose) deleteVolume(name string, vol Volume) error {
-	slog.Info("Deleting Volume", slog.String("volume", name))
 
 	// Parse remote
 	resources, err := app.ParseServers(vol.Pool)
@@ -175,8 +179,6 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Storage volume %s deleted"+"\n", vol.Name)
 
 	return nil
 }

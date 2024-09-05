@@ -22,8 +22,23 @@ func (app *Compose) RemoveContainerForService(service string, force bool) error 
 		return fmt.Errorf("service %s not found", service)
 	}
 
-	return app.removeInstance(service, force)
+	d, err := app.getInstanceServer(service)
+	if err != nil {
+		return err
+	}
+	d.UseProject(app.GetProject())
 
+	inst, _, _ := d.GetInstance(service)
+	if inst != nil && inst.Name == service {
+		err = app.removeInstance(service, force)
+		if err != nil {
+			return err
+		}
+	} else {
+		slog.Info("Instance not found", slog.String("instance", service))
+	}
+
+	return nil
 }
 func (app *Compose) StopContainerForService(service string, stateful, force bool, timeout int) error {
 	slog.Info("Stopping", slog.String("instance", service))
@@ -33,8 +48,22 @@ func (app *Compose) StopContainerForService(service string, stateful, force bool
 		return fmt.Errorf("service %s not found", service)
 	}
 
-	return app.updateInstanceState(service, "stop", timeout, force, stateful)
+	d, err := app.getInstanceServer(service)
+	if err != nil {
+		return err
+	}
 
+	inst, _, _ := d.GetInstance(service)
+	if inst != nil && inst.Name == service && inst.Status == "Running" {
+		err = app.updateInstanceState(service, "stop", timeout, force, stateful)
+		if err != nil {
+			return err
+		}
+	} else {
+		slog.Info("Instance not found", slog.String("instance", service))
+	}
+
+	return nil
 }
 func (app *Compose) StartContainerForService(service string, wait bool) error {
 	slog.Info("Starting", slog.String("instance", service))
