@@ -1,7 +1,3 @@
-
-x-incus-default-profiles: 
-  - default
-
 services:
   drone-server:
     image: images:debian/bookworm/cloud
@@ -40,13 +36,6 @@ services:
       - br0
     depends_on:
       - drone-agent
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.drone-server.rule=Host(`drone.domain.tld`)
-      - traefik.http.services.drone-server.loadbalancer.server.port=80
-      - traefik.docker.network=proxy
-      # Part for local lan services only; disable to expose externally
-      - traefik.http.routers.drone-server.middlewares=local-ipwhitelist@file
 
   drone-agent:
     image: images:debian/bookworm/cloud
