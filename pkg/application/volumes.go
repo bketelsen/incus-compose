@@ -18,12 +18,13 @@ func (app *Compose) CreateVolumesForService(service string) error {
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
+	containerName := svc.GetContainerName()
 	for volName, vol := range svc.Volumes {
 		fmt.Println("Creating volume", volName, vol)
-		completeName := vol.CreateName(app.Name, service, volName)
+		completeName := vol.CreateName(app.Name, containerName, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		existingVolume, _ := app.showVolume(service, completeName, *vol)
+		existingVolume, _ := app.showVolume(containerName, completeName, *vol)
 
 		if existingVolume != nil && completeName == existingVolume.Name {
 			slog.Info("Volume found", slog.String("volume", completeName))
@@ -45,9 +46,11 @@ func (app *Compose) ListVolumesForService(service string) ([]string, error) {
 	if !ok {
 		return []string{}, fmt.Errorf("service %s not found", service)
 	}
+
+	containerName := svc.GetContainerName()
 	volumes := []string{}
 	for volName, vol := range svc.Volumes {
-		volumes = append(volumes, vol.CreateName(app.Name, service, volName)+" (pool: "+vol.Pool+")")
+		volumes = append(volumes, vol.CreateName(app.Name, containerName, volName)+" (pool: "+vol.Pool+")")
 	}
 
 	return volumes, nil
@@ -60,12 +63,14 @@ func (app *Compose) DeleteVolumesForService(service string) error {
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
+	containerName := svc.GetContainerName()
+
 	for volName, vol := range svc.Volumes {
 
-		completeName := vol.CreateName(app.Name, service, volName)
+		completeName := vol.CreateName(app.Name, containerName, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		existingVolume, _ := app.showVolume(service, completeName, *vol)
+		existingVolume, _ := app.showVolume(containerName, completeName, *vol)
 
 		if existingVolume == nil || completeName != existingVolume.Name {
 			slog.Info("Volume not found", slog.String("volume", completeName))
@@ -87,9 +92,10 @@ func (app *Compose) AttachVolumesForService(service string) error {
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
+	containerName := svc.GetContainerName()
 	for volName, vol := range svc.Volumes {
 
-		err := app.attachVolume(vol.CreateName(app.Name, service, volName), service, *vol)
+		err := app.attachVolume(vol.CreateName(app.Name, containerName, volName), service, *vol)
 		if err != nil {
 			return err
 		}
@@ -193,19 +199,26 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 
 	slog.Debug("Incus Args", slog.String("args", fmt.Sprintf("%v", args)))
 
-	d, err := app.getInstanceServer(service)
+	svc, ok := app.Services[service]
+	if !ok {
+		return fmt.Errorf("service %s not found", service)
+	}
+	containerName := svc.GetContainerName()
+
+	d, err := app.getInstanceServer(containerName)
 	if err != nil {
 		return err
 	}
+
 	d.UseProject(app.GetProject())
 
-	instance, etag, err := d.GetInstance(service)
+	instance, etag, err := d.GetInstance(containerName)
 	if err != nil {
 		slog.Error(err.Error())
 	}
 
 	// Check if device exists
-	_, ok := instance.Devices[name]
+	_, ok = instance.Devices[name]
 	if ok {
 		slog.Info("Device already exists", slog.String("volume", name))
 		return nil
@@ -226,7 +239,7 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 
 	instance.Devices[name] = dev
 
-	op, err := d.UpdateInstance(service, instance.Writable(), etag)
+	op, err := d.UpdateInstance(containerName, instance.Writable(), etag)
 	if err != nil {
 		return err
 	}

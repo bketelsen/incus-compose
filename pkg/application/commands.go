@@ -14,6 +14,10 @@ func (app *Compose) Up() error {
 	if err != nil {
 		return err
 	}
+	err = app.CreateDefaultNetwork("")
+	if err != nil {
+		return err
+	}
 
 	for _, service := range app.Order(true) {
 
@@ -194,6 +198,10 @@ func (app *Compose) Remove(timeout int, force, stop, volumes bool) error {
 		}
 
 	}
+	err := app.DestroyDefaultNetwork()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -202,20 +210,26 @@ func (app *Compose) Info() error {
 	instanceMap := make(map[string]ui.InstanceDetails)
 
 	for service := range app.Services {
+		svc, ok := app.Services[service]
+		if !ok {
+			return fmt.Errorf("service %s not found", service)
+		}
 
-		d, err := app.getInstanceServer(service)
+		containerName := svc.GetContainerName()
+
+		d, err := app.getInstanceServer(containerName)
 		if err != nil {
 			return err
 		}
 		d.UseProject(app.GetProject())
 
-		i, _, err := d.GetInstance(service)
+		i, _, err := d.GetInstance(containerName)
 		if err != nil {
 			slog.Error(err.Error())
 
 			return err
 		}
-		s, _, err := d.GetInstanceState(service)
+		s, _, err := d.GetInstanceState(containerName)
 		if err != nil {
 			slog.Error(err.Error())
 

@@ -200,6 +200,9 @@ func parseService(s types.ServiceConfig) Service {
 	}
 
 	service.Image = s.Image
+	if s.ContainerName != "" {
+		service.ContainerName = s.ContainerName
+	}
 
 	return service
 

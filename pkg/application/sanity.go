@@ -131,6 +131,9 @@ func (app *Compose) SanityCheck() error {
 	for _, s := range app.ComposeProject.Services {
 		if s.Networks != nil {
 			for name := range s.Networks {
+				if name == "default" {
+					continue
+				}
 				if !slices.Contains(netNames, name) {
 					return &SanityCheckError{
 						Step: "check declared network exists",
