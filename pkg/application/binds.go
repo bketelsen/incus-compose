@@ -12,6 +12,7 @@ func (app *Compose) CreateBindsForService(service string) error {
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
+	containerName := svc.GetContainerName()
 	for bindName, bind := range svc.BindMounts {
 
 		slog.Debug("Bind", slog.Bool("shift", bind.Shift), slog.String("source", bind.Source), slog.String("target", bind.Target), slog.String("type", bind.Type))
@@ -28,13 +29,13 @@ func (app *Compose) CreateBindsForService(service string) error {
 		}
 
 		// check for existing bind
-		d, err := app.getInstanceServer(service)
+		d, err := app.getInstanceServer(containerName)
 		if err != nil {
 			return err
 		}
 		d.UseProject(app.GetProject())
 
-		inst, etag, err := d.GetInstance(service)
+		inst, etag, err := d.GetInstance(containerName)
 		if err != nil {
 			return err
 		}
@@ -47,7 +48,7 @@ func (app *Compose) CreateBindsForService(service string) error {
 
 		inst.Devices[bindName] = device
 
-		op, err := d.UpdateInstance(service, inst.Writable(), etag)
+		op, err := d.UpdateInstance(containerName, inst.Writable(), etag)
 		if err != nil {
 			return err
 		}

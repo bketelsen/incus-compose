@@ -17,20 +17,22 @@ import (
 func (app *Compose) RemoveContainerForService(service string, force bool) error {
 	slog.Info("Removing", slog.String("instance", service))
 
-	_, ok := app.Services[service]
+	svc, ok := app.Services[service]
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
 
-	d, err := app.getInstanceServer(service)
+	containerName := svc.GetContainerName()
+
+	d, err := app.getInstanceServer(containerName)
 	if err != nil {
 		return err
 	}
 	d.UseProject(app.GetProject())
 
-	inst, _, _ := d.GetInstance(service)
-	if inst != nil && inst.Name == service {
-		err = app.removeInstance(service, force)
+	inst, _, _ := d.GetInstance(containerName)
+	if inst != nil && inst.Name == containerName {
+		err = app.removeInstance(containerName, force)
 		if err != nil {
 			return err
 		}
@@ -43,25 +45,26 @@ func (app *Compose) RemoveContainerForService(service string, force bool) error 
 func (app *Compose) StopContainerForService(service string, stateful, force bool, timeout int) error {
 	slog.Info("Stopping", slog.String("instance", service))
 
-	_, ok := app.Services[service]
+	svc, ok := app.Services[service]
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
+	containerName := svc.GetContainerName()
 
-	d, err := app.getInstanceServer(service)
+	d, err := app.getInstanceServer(containerName)
 	if err != nil {
 		return err
 	}
 	d.UseProject(app.GetProject())
 
-	inst, _, _ := d.GetInstance(service)
-	if inst != nil && inst.Name == service && inst.Status == "Running" {
-		err = app.updateInstanceState(service, "stop", timeout, force, stateful)
+	inst, _, _ := d.GetInstance(containerName)
+	if inst != nil && inst.Name == containerName && inst.Status == "Running" {
+		err = app.updateInstanceState(containerName, "stop", timeout, force, stateful)
 		if err != nil {
 			return err
 		}
 	} else {
-		slog.Info("Instance not found", slog.String("instance", service))
+		slog.Info("Instance not found", slog.String("instance", containerName))
 	}
 
 	return nil
@@ -74,18 +77,20 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 		return fmt.Errorf("service %s not found", service)
 	}
 
-	d, err := app.getInstanceServer(service)
+	containerName := svc.GetContainerName()
+
+	d, err := app.getInstanceServer(containerName)
 	if err != nil {
 		return err
 	}
 
 	d.UseProject(app.GetProject())
 
-	inst, _, _ := d.GetInstance(service)
-	if inst != nil && inst.Name == service && inst.Status == "Running" {
-		slog.Info("Instance already running", slog.String("instance", service))
+	inst, _, _ := d.GetInstance(containerName)
+	if inst != nil && inst.Name == containerName && inst.Status == "Running" {
+		slog.Info("Instance already running", slog.String("instance", containerName))
 	} else {
-		err = app.updateInstanceState(service, "start", -1, false, false)
+		err = app.updateInstanceState(containerName, "start", -1, false, false)
 		if err != nil {
 			return err
 		}
@@ -93,22 +98,22 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 
 	if wait {
 		if svc.CloudInitUserData != "" || svc.CloudInitUserDataFile != "" {
-			slog.Info("cloud-init", slog.String("instance", service), slog.String("status", "waiting"))
+			slog.Info("cloud-init", slog.String("instance", containerName), slog.String("status", "waiting"))
 
-			args := []string{"exec", service}
+			args := []string{"exec", containerName}
 			args = append(args, "--project", app.GetProject())
 			args = append(args, "--", "cloud-init", "status", "--wait")
 			out, code, err := cli.ExecuteShellStreamExitCode(context.Background(), args)
 			if err != nil {
-				slog.Error("Incus error", slog.String("instance", service), slog.String("message", out))
+				slog.Error("Incus error", slog.String("instance", containerName), slog.String("message", out))
 				return err
 			}
 			if code == 2 {
-				slog.Error("cloud-init", slog.String("instance", service), slog.String("status", "completed with recoverable errors"))
+				slog.Error("cloud-init", slog.String("instance", containerName), slog.String("status", "completed with recoverable errors"))
 			}
 
-			slog.Info("cloud-init", slog.String("instance", service), slog.String("status", "done"))
-			slog.Debug("Incus ", slog.String("instance", service), slog.String("message", out))
+			slog.Info("cloud-init", slog.String("instance", containerName), slog.String("status", "done"))
+			slog.Debug("Incus ", slog.String("instance", containerName), slog.String("message", out))
 		}
 	}
 	return nil
@@ -117,12 +122,14 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 func (app *Compose) RestartContainerForService(service string) error {
 	slog.Info("Restarting", slog.String("instance", service))
 
-	_, ok := app.Services[service]
+	svc, ok := app.Services[service]
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
 
-	return app.updateInstanceState(service, "restart", -1, false, false)
+	containerName := svc.GetContainerName()
+
+	return app.updateInstanceState(containerName, "restart", -1, false, false)
 
 }
 func (app *Compose) InitContainerForService(service string) error {
@@ -231,42 +238,45 @@ func (app *Compose) InitContainerForService(service string) error {
 	if len(sc.Networks) > 0 {
 		networkNumber := 0
 		for net := range sc.Networks {
-			if net != "default" {
-				netName := fmt.Sprintf("eth%d", networkNumber)
-
-				network, _, err := d.GetNetwork(net)
-				if err != nil {
-					return fmt.Errorf("failed loading network %q: %w", net, err)
-				}
-
-				// Prepare the instance's NIC device entry.
-				var device map[string]string
-
-				if network.Managed && d.HasExtension("instance_nic_network") {
-					// If network is snapmanaged, use the network property rather than nictype, so that the
-					// network's inherited properties are loaded into the NIC when started.
-					device = map[string]string{
-						"name":    netName,
-						"type":    "nic",
-						"network": network.Name,
-					}
-				} else {
-					// If network is unmanaged default to using a macvlan connected to the specified interface.
-					device = map[string]string{
-						"name":    netName,
-						"type":    "nic",
-						"nictype": "macvlan",
-						"parent":  net,
-					}
-
-					if network.Type == "bridge" {
-						// If the network type is an unmanaged bridge, use bridged NIC type.
-						device["nictype"] = "bridged"
-					}
-				}
-				devicesMap[netName] = device
-				networkNumber++
+			if net == "default" {
+				net = app.DefaultNetworkName()
 			}
+
+			netName := fmt.Sprintf("eth%d", networkNumber)
+
+			network, _, err := d.GetNetwork(net)
+			if err != nil {
+				return fmt.Errorf("failed loading network %q: %w", net, err)
+			}
+
+			// Prepare the instance's NIC device entry.
+			var device map[string]string
+
+			if network.Managed && d.HasExtension("instance_nic_network") {
+				// If network is managed, use the network property rather than nictype, so that the
+				// network's inherited properties are loaded into the NIC when started.
+				device = map[string]string{
+					"name":    netName,
+					"type":    "nic",
+					"network": network.Name,
+				}
+			} else {
+				// If network is unmanaged default to using a macvlan connected to the specified interface.
+				device = map[string]string{
+					"name":    netName,
+					"type":    "nic",
+					"nictype": "macvlan",
+					"parent":  net,
+				}
+
+				if network.Type == "bridge" {
+					// If the network type is an unmanaged bridge, use bridged NIC type.
+					device["nictype"] = "bridged"
+				}
+			}
+			devicesMap[netName] = device
+			networkNumber++
+
 		}
 	} // sc.networks
 
@@ -303,7 +313,11 @@ func (app *Compose) InitContainerForService(service string) error {
 		}
 	}
 
-	instancePost.Name = sc.Name
+	var containerName = sc.Name
+	if sc.ContainerName != "" {
+		containerName = sc.ContainerName
+	}
+	instancePost.Name = containerName
 	instancePost.Type = api.InstanceTypeContainer
 	instancePost.InstanceType = "" // c2.micro etc
 	instancePost.Config = configMap

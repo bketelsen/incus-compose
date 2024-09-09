@@ -19,6 +19,7 @@ type Compose struct {
 
 type Service struct {
 	Name                  string             `yaml:"name" validate:"required"`
+	ContainerName         string             `yaml:"containername,omitempty"`
 	Image                 string             `yaml:"image" validate:"required"`
 	GPU                   bool               `yaml:"gpu,omitempty"`
 	Volumes               map[string]*Volume `yaml:"volumes,omitempty" validate:"dive,required"`

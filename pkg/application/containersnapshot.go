@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -9,8 +10,13 @@ import (
 
 func (app *Compose) SnapshotInstance(service string, noexpiry, stateful, volumes bool) error {
 	slog.Info("Showing", slog.String("instance", service))
+	svc, ok := app.Services[service]
+	if !ok {
+		return fmt.Errorf("service %s not found", service)
+	}
 
-	return app.createSnapshot(service, snapshotName(service), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
+	containerName := svc.GetContainerName()
+	return app.createSnapshot(containerName, snapshotName(containerName), stateful, noexpiry, time.Now().Add(time.Hour*24*7))
 
 }
 
