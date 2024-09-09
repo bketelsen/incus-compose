@@ -36,14 +36,14 @@ func (app *Compose) volumeExport(pool, volume, targetName string) error {
 	if resource.name == "" {
 		return fmt.Errorf("Missing pool name")
 	}
-	req := api.StoragePoolVolumeBackupsPost{
+	req := api.StorageVolumeBackupsPost{
 		Name:             "",
 		ExpiresAt:        time.Now().Add(24 * time.Hour),
 		VolumeOnly:       true,
 		OptimizedStorage: false,
 	}
 	resource.server.UseProject(app.GetProject())
-	op, err := resource.server.CreateStoragePoolVolumeBackup(pool, volume, req)
+	op, err := resource.server.CreateStorageVolumeBackup(pool, volume, req)
 	if err != nil {
 		return fmt.Errorf("failed to create storage volume backup: %w", err)
 	}
@@ -67,7 +67,7 @@ func (app *Compose) volumeExport(pool, volume, targetName string) error {
 
 	defer func() {
 		// Delete backup after we're done
-		op, err = resource.server.DeleteStoragePoolVolumeBackup(pool, volume, backupName)
+		op, err = resource.server.DeleteStorageVolumeBackup(pool, volume, backupName)
 		if err == nil {
 			_ = op.Wait()
 		}
@@ -85,7 +85,7 @@ func (app *Compose) volumeExport(pool, volume, targetName string) error {
 	}
 
 	// Export tarball
-	_, err = resource.server.GetStoragePoolVolumeBackupFile(pool, volume, backupName, &backupFileRequest)
+	_, err = resource.server.GetStorageVolumeBackupFile(pool, volume, backupName, &backupFileRequest)
 	if err != nil {
 		_ = os.Remove(targetName)
 		return fmt.Errorf("failed to fetch storage volume backup file: %w", err)
