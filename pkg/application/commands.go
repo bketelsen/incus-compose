@@ -46,6 +46,11 @@ func (app *Compose) Up() error {
 			return err
 		}
 
+		err = app.CreateSecretsForService(service)
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
 }

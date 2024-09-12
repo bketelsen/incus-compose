@@ -49,6 +49,13 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 		compose.Services[s.Name] = service
 	}
 
+	// parse secretsfiles
+	compose.SecretsFiles = make(map[string]SecretsFile)
+	for _, s := range p.Secrets {
+		sf := parseSecret(s)
+		compose.SecretsFiles[s.Name] = sf
+	}
+
 	// get additional information about volumes
 	for _, vol := range p.Volumes {
 		//fmt.Println(vol.Name)
@@ -199,6 +206,13 @@ func parseService(s types.ServiceConfig) Service {
 
 	}
 
+	service.Secrets = make(map[string]Secret)
+	for _, v := range s.Secrets {
+		s := Secret{}
+		s.MountPoint = v.Target
+		service.Secrets[v.Source] = s
+	}
+
 	service.Image = s.Image
 	if s.ContainerName != "" {
 		service.ContainerName = s.ContainerName
@@ -210,4 +224,10 @@ func parseService(s types.ServiceConfig) Service {
 
 func bindNameStable(path string) string {
 	return slug.Make(path)
+}
+
+func parseSecret(s types.SecretConfig) SecretsFile {
+	sf := SecretsFile{}
+	sf.FilePath = s.File
+	return sf
 }
