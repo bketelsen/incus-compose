@@ -5,7 +5,7 @@ go 1.22.6
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
 	github.com/charmbracelet/lipgloss v0.13.0
-	github.com/compose-spec/compose-go/v2 v2.2.0
+	github.com/compose-spec/compose-go/v2 v2.3.0
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.14.0
 	github.com/lmittmann/tint v1.0.5
