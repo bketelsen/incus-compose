@@ -14,9 +14,3 @@ tasks:
     deps: [build]
     cmds:
       - ./incus-compose generate
-
-  transfer:
-    desc: copy to server
-    deps: [build]
-    cmds:
-      - scp incus-compose bjk@10.0.1.10:~/bin/incus-compose

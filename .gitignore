@@ -1,3 +1,4 @@
 incus-compose
 dist/
+.envrc
 .secrets
