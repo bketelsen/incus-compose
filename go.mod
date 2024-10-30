@@ -1,7 +1,8 @@
 module github.com/bketelsen/incus-compose
 
-go 1.22.6
-toolchain go1.22.8
+go 1.22.7
+
+toolchain go1.23.2
 
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
