@@ -6,7 +6,7 @@ toolchain go1.23.2
 
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
-	github.com/charmbracelet/lipgloss v0.13.1
+	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/compose-spec/compose-go/v2 v2.4.1
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.14.0
@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/charmbracelet/x/ansi v0.3.2 // indirect
+	github.com/charmbracelet/x/ansi v0.4.2 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
