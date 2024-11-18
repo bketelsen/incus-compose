@@ -1,0 +1,9 @@
+services:
+  fromprofile:
+    image: images:debian/bookworm/cloud
+    container_name: fromprofile
+    restart: unless-stopped
+    x-incus-additional-profiles:
+      - br5
+
+# DOES NOT WORK

@@ -1,6 +1,8 @@
 services:
   gitea:
     image: docker:gitea/gitea:latest
+    depends_on:
+      - db
     environment:
       - DB_TYPE=postgres
       - DB_HOST=db:5432
