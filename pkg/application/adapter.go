@@ -117,6 +117,7 @@ func parseService(s types.ServiceConfig) Service {
 	for k, v := range s.Environment {
 		service.Environment[k] = v
 	}
+	service.Ports = append(service.Ports, s.Ports...)
 
 	// parse service extensions
 	for k, v := range s.Extensions {
