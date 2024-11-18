@@ -1,0 +1,12 @@
+services:
+  declared:
+    image: images:debian/bookworm/cloud
+    container_name: declared
+    restart: unless-stopped
+    networks:
+      - incusbr0
+
+
+networks:
+  incusbr0:
+    external: true

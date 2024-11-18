@@ -8,6 +8,11 @@ tasks:
     desc: build the project
     cmds:
       - go build -o incus-compose
+  install:
+    desc: install the project
+    deps: [build]
+    cmds:
+      - cp incus-compose ~/bin/
 
   sample:
     desc: Create sample incus-compose.yaml
