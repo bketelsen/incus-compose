@@ -1,0 +1,27 @@
+services:
+  jellyfin:
+    image: oci-lscr:linuxserver/jellyfin:latest
+    container_name: jellyfin
+    x-incus-gpu: true
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_YORK
+    volumes:
+      - jellyfinconfig:/config
+      - jellyfincache:/cache
+      - type: bind
+        source: /mnt/slow/media_root
+        target: /data
+        x-incus-shift: true
+    restart: 'unless-stopped'
+    networks:
+      - br5
+
+volumes:
+  jellyfinconfig:
+  jellyfincache:
+
+networks:
+  br5:
+    external: true
