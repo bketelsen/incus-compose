@@ -286,6 +286,12 @@ func (app *Compose) InitContainerForService(service string) error {
 		configMap["environment."+k] = *v
 	}
 
+	for k, v := range sc.Labels {
+		configMap["user."+k] = v
+	}
+	configMap["user.dev.brian.incus-compose.directory"] = app.ComposeProject.WorkingDir
+	configMap["user.dev.brian.incus-compose"] = "true"
+
 	// add env vars from file
 	if len(sc.EnvFiles) > 0 {
 		for _, value := range sc.EnvFiles {
