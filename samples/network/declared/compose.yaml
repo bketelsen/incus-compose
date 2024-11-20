@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     networks:
       - incusbr0
+    labels:
+      com.example.appname: my-test-app
 
 
 networks:
