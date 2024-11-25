@@ -7,7 +7,7 @@ toolchain go1.23.2
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
 	github.com/charmbracelet/lipgloss v1.0.0
-	github.com/compose-spec/compose-go/v2 v2.4.4
+	github.com/compose-spec/compose-go/v2 v2.4.5
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.14.0
 	github.com/lmittmann/tint v1.0.5
