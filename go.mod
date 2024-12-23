@@ -10,7 +10,7 @@ require (
 	github.com/compose-spec/compose-go/v2 v2.4.5
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.14.0
-	github.com/lmittmann/tint v1.0.5
+	github.com/lmittmann/tint v1.0.6
 	github.com/lxc/incus v0.7.0
 	github.com/lxc/incus/v6 v6.7.0
 	github.com/spf13/cobra v1.8.1
