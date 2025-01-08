@@ -59,11 +59,6 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 	// get additional information about volumes
 	for _, vol := range p.Volumes {
 		//fmt.Println(vol.Name)
-		pool := "default"
-		driverPool := vol.DriverOpts["pool"]
-		if driverPool != "" {
-			pool = driverPool
-		}
 		var snap *Snapshot
 
 		// parse volume extensions
@@ -98,7 +93,13 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 			for k, v := range s.Volumes {
 				fullVolName := p.Name + "_" + k
 				if fullVolName == vol.Name {
-					v.Pool = pool
+					if pool, exists := vol.DriverOpts["pool"]; exists && pool != "" {
+						v.Pool = pool
+					} else if s.Storage != "" {
+						v.Pool = s.Storage
+					} else {
+						v.Pool = "default"
+					}
 					v.Snapshot = snap
 					v.Name = v.CreateName(p.Name, s.Name, k)
 				}
