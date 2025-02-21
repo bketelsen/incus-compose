@@ -2,3 +2,9 @@ incus-compose
 dist/
 .envrc
 .secrets
+
+node_modules/
+public/
+resources/
+
+.hugo_build.lock
