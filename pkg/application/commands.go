@@ -96,6 +96,12 @@ func (app *Compose) Down(force, volumes bool, timeout int) error {
 		}
 
 	}
+
+	err := app.DestroyDefaultNetwork()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
