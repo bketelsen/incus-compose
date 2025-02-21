@@ -12,10 +12,18 @@ tasks:
     desc: install the project
     deps: [build]
     cmds:
-      - cp incus-compose ~/bin/
+      - go install .
 
   sample:
     desc: Create sample incus-compose.yaml
     deps: [build]
     cmds:
       - ./incus-compose generate
+
+  site:
+    desc: Run hugo dev server
+    deps: [build]
+    dir: docs
+    cmds:
+      - hugo server --buildDrafts --disableFastRender
+  
