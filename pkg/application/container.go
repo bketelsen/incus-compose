@@ -280,6 +280,22 @@ func (app *Compose) InitContainerForService(service string) error {
 		}
 	} // sc.networks
 
+	for _, port := range sc.Ports {
+		var device map[string]string
+		ip := port.HostIP
+		if ip == "" {
+			ip = "0.0.0.0"
+		}
+		name := fmt.Sprintf("docker-port-%s-%s", ip, port.Published)
+		device = map[string]string{
+			"type":    "proxy",
+			"listen":  fmt.Sprintf("%s:%s:%s", port.Protocol, ip, port.Published),
+			"connect": fmt.Sprintf("%s:%s:%d", port.Protocol, "127.0.0.1", port.Target),
+		}
+
+		devicesMap[name] = device
+	}
+
 	// config
 	configMap = map[string]string{}
 	for k, v := range sc.Environment {
