@@ -1,5 +1,6 @@
 version: '3'
-
+vars:
+  VERSION: 0.0.2
 
 output: prefixed
 
@@ -26,4 +27,9 @@ tasks:
     dir: docs
     cmds:
       - hugo server --buildDrafts --disableFastRender
-  
+
+  publish:
+    cmds:
+      - git push origin
+      - git tag v{{.VERSION}}
+      - git push --tags 
