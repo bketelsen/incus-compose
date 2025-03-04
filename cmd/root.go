@@ -39,8 +39,8 @@ import (
 
 	dockercompose "github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
-	"github.com/lxc/incus/shared/util"
 	config "github.com/lxc/incus/v6/shared/cliconfig"
+	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
