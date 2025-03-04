@@ -1,7 +1,8 @@
 module github.com/bketelsen/incus-compose
 
-go 1.22.7
-toolchain go1.23.2
+go 1.23.0
+
+toolchain go1.24.0
 
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
@@ -10,7 +11,6 @@ require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.15.0
 	github.com/lmittmann/tint v1.0.7
-	github.com/lxc/incus v0.7.0
 	github.com/lxc/incus/v6 v6.10.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
