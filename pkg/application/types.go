@@ -51,10 +51,11 @@ type Volume struct {
 }
 
 type Bind struct {
-	Type   string `yaml:"type"`
-	Source string `yaml:"source"`
-	Target string `yaml:"target"`
-	Shift  bool   `yaml:"shift,omitempty"`
+	Type     string `yaml:"type"`
+	Source   string `yaml:"source"`
+	Target   string `yaml:"target"`
+	Shift    bool   `yaml:"shift,omitempty"`
+	ReadOnly bool   `yaml:"readonly,omitempty"`
 }
 
 type Secret struct {
