@@ -48,6 +48,8 @@ type Volume struct {
 	Mountpoint string    `yaml:"mountpoint"`
 	Pool       string    `yaml:"pool" validate:"pool-exists"`
 	Snapshot   *Snapshot `yaml:"snapshot,omitempty"`
+	Shift      bool      `yaml:"shift,omitempty"`
+	ReadOnly   bool      `yaml:"readonly,omitempty"`
 }
 
 type Bind struct {

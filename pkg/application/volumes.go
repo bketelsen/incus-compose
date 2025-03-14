@@ -121,6 +121,10 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 		}
 	}
 
+	if vol.Shift {
+		config["security.shifted"] = "true"
+	}
+
 	// Parse the input
 	volName, volType := parseVolume("custom", name)
 
@@ -235,6 +239,10 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 		"pool":   vol.Pool,
 		"source": volName,
 		"path":   vol.Mountpoint,
+	}
+
+	if vol.ReadOnly {
+		dev["readonly"] = "true"
 	}
 
 	instance.Devices[name] = dev
