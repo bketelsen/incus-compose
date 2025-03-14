@@ -181,10 +181,26 @@ func parseService(s types.ServiceConfig) Service {
 	for _, v := range s.Volumes {
 		//volume := Volume{}
 		//fmt.Println("volume type", v.Type)
+
+		var shifted bool = false
+		for key, val := range v.Extensions {
+			switch key {
+			case "x-incus-shift":
+				shifted = val.(bool)
+				continue
+			default:
+				fmt.Printf("volume %q: unsupported compose extension: %q\n", v, key)
+			}
+		}
+
 		switch v.Type {
 		case "volume":
 			volume := &Volume{}
 			volume.Mountpoint = v.Target
+			volume.ReadOnly = v.ReadOnly
+			if shifted {
+				volume.Shift = shifted
+			}
 			service.Volumes[v.Source] = volume
 		case "bind":
 			bind := Bind{}
@@ -192,7 +208,10 @@ func parseService(s types.ServiceConfig) Service {
 			bind.Target = v.Target
 			bind.Type = "disk"
 			bind.ReadOnly = v.ReadOnly
-			
+			if shifted {
+				bind.Shift = shifted
+			}
+
 			for key, val := range v.Extensions {
 				switch key {
 				case "x-incus-shift":
