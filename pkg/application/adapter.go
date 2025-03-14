@@ -191,6 +191,8 @@ func parseService(s types.ServiceConfig) Service {
 			bind.Source = v.Source
 			bind.Target = v.Target
 			bind.Type = "disk"
+			bind.ReadOnly = v.ReadOnly
+			
 			for key, val := range v.Extensions {
 				switch key {
 				case "x-incus-shift":

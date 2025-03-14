@@ -27,6 +27,9 @@ func (app *Compose) CreateBindsForService(service string) error {
 		if bind.Shift {
 			device["shift"] = "true"
 		}
+		if bind.ReadOnly {
+			device["readonly"] = "true"
+		}
 
 		// check for existing bind
 		d, err := app.getInstanceServer(containerName)
