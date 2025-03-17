@@ -7,7 +7,7 @@ toolchain go1.24.0
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
 	github.com/charmbracelet/lipgloss v1.0.0
-	github.com/compose-spec/compose-go/v2 v2.4.8
+	github.com/compose-spec/compose-go/v2 v2.4.9
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.15.0
 	github.com/lmittmann/tint v1.0.7
@@ -58,6 +58,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
+	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	github.com/zitadel/logging v0.6.1 // indirect
 	github.com/zitadel/oidc/v3 v3.35.0 // indirect
 	github.com/zitadel/schema v1.3.0 // indirect
