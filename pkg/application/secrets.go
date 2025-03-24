@@ -19,7 +19,7 @@ func (app *Compose) CreateSecretsForService(service string) error {
 	if len(svc.Secrets) == 0 {
 		return nil
 	}
-	fmt.Println("secrets: ", svc.Secrets)
+
 	for k := range svc.Secrets {
 		slog.Debug("Adding Secret", slog.String("instance", service), slog.String("secret name", k))
 		secretsFileId := fmt.Sprintf("%s_%s", app.Name, k)

@@ -4,7 +4,7 @@
 package application
 
 import (
-	"fmt"
+	"log/slog"
 
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/gosimple/slug"
@@ -31,14 +31,13 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 			}
 			continue
 		case "x-incus-project":
-			//fmt.Printf("project %q: extension: %q value: %q\n", p.Name, k, v)
 			proj, ok := v.(string)
 			if ok {
 				compose.Project = proj
 			}
 			continue
 		default:
-			fmt.Printf("project %q: unsupported compose extension: %q\n", p.Name, k)
+			slog.Error("unsupported compose extension", "project", p.Name, "extension", k)
 		}
 	}
 
@@ -58,7 +57,6 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 
 	// get additional information about volumes
 	for _, vol := range p.Volumes {
-		//fmt.Println(vol.Name)
 		var snap *Snapshot
 
 		// parse volume extensions
@@ -77,7 +75,7 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 						case "pattern":
 							snap.Pattern = v.(string)
 						default:
-							fmt.Printf("service %q: unsupported snapshot extension: %q\n", vol.Name, k)
+							slog.Error("unsupported snapshot extension", "volume", vol.Name, "extension", k)
 						}
 					}
 					//service.Snapshot = snap
@@ -85,7 +83,7 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 				}
 				continue
 			default:
-				fmt.Printf("volume %q: unsupported compose extension: %q\n", vol.Name, k)
+				slog.Error("unsupported compose extension", "volume", vol.Name, "extension", k)
 			}
 		}
 		// now find the service that uses this volume
@@ -152,7 +150,6 @@ func parseService(s types.ServiceConfig) Service {
 		case "x-incus-snapshot":
 			snapshot, ok := v.(map[string]interface{})
 			if ok {
-				//fmt.Println("parsed snapshot", snapshot)
 				snap := &Snapshot{}
 				for k, v := range snapshot {
 					switch k {
@@ -163,7 +160,7 @@ func parseService(s types.ServiceConfig) Service {
 					case "pattern":
 						snap.Pattern = v.(string)
 					default:
-						fmt.Printf("service %q: unsupported snapshot extension: %q\n", s.Name, k)
+						slog.Error("unsupported snapshot extension", "service", s.Name, "extension", k)
 					}
 				}
 				service.Snapshot = snap
@@ -171,7 +168,7 @@ func parseService(s types.ServiceConfig) Service {
 			}
 			continue
 		default:
-			fmt.Printf("service %q: unsupported compose extension: %q\n", s.Name, k)
+			slog.Error("unsupported compose extension", "service", s.Name, "extension", k)
 		}
 	}
 	service.Volumes = make(map[string]*Volume)
@@ -179,8 +176,6 @@ func parseService(s types.ServiceConfig) Service {
 
 	// parse volumes
 	for _, v := range s.Volumes {
-		//volume := Volume{}
-		//fmt.Println("volume type", v.Type)
 
 		var shifted bool = false
 		for key, val := range v.Extensions {
@@ -189,7 +184,7 @@ func parseService(s types.ServiceConfig) Service {
 				shifted = val.(bool)
 				continue
 			default:
-				fmt.Printf("volume %q: unsupported compose extension: %q\n", v, key)
+				slog.Error("unsupported compose extension", "volume", v.Source, "extension", key)
 			}
 		}
 
@@ -218,12 +213,12 @@ func parseService(s types.ServiceConfig) Service {
 					bind.Shift = val.(bool)
 					continue
 				default:
-					fmt.Printf("volume %q: unsupported compose extension: %q\n", v, key)
+					slog.Error("unsupported compose extension", "volume", v.Source, "extension", key)
 				}
 			}
 			service.BindMounts[bindNameStable(v.Source)] = bind
 		default:
-			fmt.Printf("service %q: unsupported volume type: %q\n", s.Name, v.Type)
+			slog.Error("unsupported volume type", "service", s.Name, "volume", v.Source, "type", v.Type)
 		}
 
 	}

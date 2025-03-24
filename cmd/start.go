@@ -24,7 +24,7 @@ package cmd
 import (
 	"log/slog"
 
-	"github.com/spf13/cobra"
+	"github.com/bketelsen/toolbox/cobra"
 )
 
 // startCmd represents the start command
@@ -38,7 +38,6 @@ var startCmd = &cobra.Command{
 
 		slog.Info("Starting", slog.String("app", app.Name))
 
-		//	incus.Execute(context.Background(), []string{"ls"})
 		err := app.Start(false)
 		if err != nil {
 			slog.Error("Start", slog.String("error", err.Error()))

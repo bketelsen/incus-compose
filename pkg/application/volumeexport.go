@@ -34,7 +34,7 @@ func (app *Compose) volumeExport(pool, volume, targetName string) error {
 
 	resource := resources[0]
 	if resource.name == "" {
-		return fmt.Errorf("Missing pool name")
+		return fmt.Errorf("missing pool name")
 	}
 	req := api.StorageVolumeBackupsPost{
 		Name:             "",

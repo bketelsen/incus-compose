@@ -20,7 +20,7 @@ func (app *Compose) CreateVolumesForService(service string) error {
 	}
 	containerName := svc.GetContainerName()
 	for volName, vol := range svc.Volumes {
-		fmt.Println("Creating volume", volName, vol)
+		slog.Info("Creating volume", "name", volName)
 		completeName := vol.CreateName(app.Name, containerName, volName)
 		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
@@ -29,7 +29,7 @@ func (app *Compose) CreateVolumesForService(service string) error {
 		if existingVolume != nil && completeName == existingVolume.Name {
 			slog.Info("Volume found", slog.String("volume", completeName))
 		} else {
-			fmt.Println("Creating volume", completeName, vol)
+			slog.Info("Creating volume", "name", completeName)
 			err := app.createVolume(completeName, *vol)
 			if err != nil {
 				return err
@@ -153,7 +153,7 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 
 	resource := resources[0]
 	if resource.name == "" {
-		return fmt.Errorf("Missing pool name")
+		return fmt.Errorf("missing pool name")
 	}
 
 	client := resource.server
@@ -176,7 +176,7 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 
 	resource := resources[0]
 	if resource.name == "" {
-		return fmt.Errorf("Missing pool name")
+		return fmt.Errorf("missing pool name")
 	}
 
 	client := resource.server
@@ -184,7 +184,7 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 
 	// Parse the input
 	volName, volType := parseVolume("custom", vol.Name)
-	fmt.Println("Deleting volume", volName, name, volType)
+	slog.Info("Deleting volume", "name", volName, "type", volType)
 
 	// Delete the volume
 	err = client.DeleteStoragePoolVolume(resource.name, volType, name)
@@ -230,7 +230,7 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 
 	volName, volType := parseVolume("custom", name)
 	if volType != "custom" {
-		return fmt.Errorf("Only \"custom\" volumes can be attached to instances")
+		return fmt.Errorf("only \"custom\" volumes can be attached to instances")
 	}
 
 	// Prepare the instance's device entry
@@ -284,9 +284,9 @@ func (app *Compose) showVolume(service, name string, vol Volume) (*api.StorageVo
 	if err != nil {
 		if api.StatusErrorCheck(err, http.StatusNotFound) {
 			if volType == "custom" {
-				return nil, fmt.Errorf("Storage pool volume \"%s/%s\" not found. Try virtual-machine or container for type", volType, volName)
+				return nil, fmt.Errorf("storage pool volume \"%s/%s\" not found. Try virtual-machine or container for type", volType, volName)
 			}
-			return nil, fmt.Errorf("Storage pool volume \"%s/%s\" notfound", volType, volName)
+			return nil, fmt.Errorf("storage pool volume \"%s/%s\" notfound", volType, volName)
 		}
 		return nil, err
 	}

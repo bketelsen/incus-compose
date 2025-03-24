@@ -73,11 +73,6 @@ func (c Loader) LoadProject(ctx context.Context) (*compose.Project, error) {
 		return nil, err
 	}
 
-	// if term.DoDebug() {
-	// 	b, _ := yaml.Marshal(project)
-	// 	fmt.Println(string(b))
-	// }
-
 	return project, nil
 }
 

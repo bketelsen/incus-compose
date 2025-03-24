@@ -1,4 +1,4 @@
-baseURL: https://example.org/
+baseURL: https://bketelsen.github.io/incus-compose/
 languageCode: en-us
 title: Incus Compose
 # https://imfing.github.io/hextra/
@@ -35,6 +35,49 @@ enableInlineShortcodes: true
 module:
   imports:
     - path: github.com/imfing/hextra
+  mounts:
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: content
+    target: content
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: site/data
+    target: data
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: site/layouts
+    target: layouts
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: site/i18n
+    target: i18n
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: site/archetypes
+    target: archetypes
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: site/assets
+    target: assets
+  - disableWatch: false
+    excludeFiles: null
+    includeFiles: null
+    lang: ""
+    source: site/static
+    target: static
 
 
 menu:
@@ -43,6 +86,10 @@ menu:
       name: Documentation
       pageRef: /docs
       weight: 1
+    - identifier: guides
+      name: Guides
+      pageRef: /docs/guides
+      weight: 2
     - name: Search
       weight: 5
       params:
@@ -60,12 +107,12 @@ menu:
         type: separator
       weight: 1
 
-    - identifier: incusDocs
-      name: "Incus Docs ↗"
-      url: "https://linuxcontainers.org/incus/docs/main/"
+    - identifier: toolbox
+      name: "Replace Me ↗"
+      url: "https://bketelsen.github.io/toolbox/"
       weight: 2
 params:
-  description: Modern, responsive, batteries-included Hugo theme for creating beautiful static websites.
+  description: Replace Me with a description of your project
 
   navbar:
     displayTitle: true
@@ -89,8 +136,8 @@ params:
 
   footer:
     enable: true
-    displayCopyright: true
-    displayPoweredBy: true
+    displayCopyright: false
+    displayPoweredBy: false
     width: normal
 
   # Display the last modification date
@@ -112,7 +159,7 @@ params:
 
   editURL:
     enable: true
-    base: "https://github.com/bketelsen/incus-compose/edit/main/docs/content"
+    base: "https://github.com/bketelsen/incus-compose/edit/main/content"
 
   blog:
     list:

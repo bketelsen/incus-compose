@@ -1,35 +1,52 @@
-version: '3'
-vars:
-  VERSION: 0.1.0
+# https://taskfile.dev
+# Generated File, changes may be lost
+# Add `Taskfile.custom.yml` in this directory with your additions
 
-output: prefixed
+version: '3'
+
+vars:
+  VERSION: 0.1.1
+
+includes:
+  docs:
+    taskfile: Taskfile.docs.yml
+    optional: true
+  checks:
+    taskfile: Taskfile.checks.yml
+    optional: true
+  release:
+    taskfile: Taskfile.release.yml
+    optional: true
+  custom:
+    taskfile: Taskfile.custom.yml
+    optional: true
 
 tasks:
   build:
-    desc: build the project
-    cmds:
-      - go build -o incus-compose
-  install:
-    desc: install the project
-    deps: [build]
-    cmds:
-      - go install .
+    desc: Build the application
+    summary: |
+      Build the application with ldflags to set the version with a -dev suffix.
 
-  sample:
-    desc: Create sample incus-compose.yaml
-    deps: [build]
+      Output: 'incus-compose' in project root.
     cmds:
-      - ./incus-compose generate
+      - go build -o incus-compose -ldflags '-s -w -X github.com/bketelsen/incus-compose/cmd.version={{.VERSION}}-dev' main.go
+    silent: true
 
-  site:
-    desc: Run hugo dev server
-    deps: [build]
-    dir: docs
+  tools:
+    desc: Install required tools
     cmds:
-      - hugo server --buildDrafts --disableFastRender
+      - go install github.com/bketelsen/toolbox/toolgen@latest
 
-  publish:
+  direnv:
+    desc: Add direnv hook to your bashrc
     cmds:
-      - git push origin
-      - git tag v{{.VERSION}}
-      - git push --tags 
+      - direnv hook bash >> ~/.bashrc
+    silent: true
+
+  generate:
+    desc: Generate CLI documentation
+    deps: [tools]
+    cmds:
+      - go run main.go gendocs -b "/incus-compose"
+    silent: true
+

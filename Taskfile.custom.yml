@@ -1,0 +1,16 @@
+
+version: '3'
+
+
+tasks:
+
+  release-local:
+    desc: Build and install locally using goreleaser
+    vars:
+      GOOS: '{{OS}}'
+      GOARCH: '{{ARCH}}'
+    cmds:
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} goreleaser release --single-target --snapshot --clean 
+      - 'cp ./dist/{{.GOOS}}_{{.GOARCH}}/incus-compose_{{.GOOS}}_{{.GOARCH}}_v1/incus-compose /go/bin/incus-compose'
+      - 'echo Release for {{.GOOS}}/{{.GOARCH}}'
+    silent: true

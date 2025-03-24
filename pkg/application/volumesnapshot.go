@@ -22,7 +22,7 @@ func (app *Compose) volumeSnapshot(pool, volume, snapshotName string, stateful b
 
 	resource := resources[0]
 	if resource.name == "" {
-		return fmt.Errorf("Missing pool name")
+		return fmt.Errorf("missing pool name")
 	}
 	req := api.StorageVolumeSnapshotsPost{
 		Name: snapshotName,

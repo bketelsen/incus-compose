@@ -114,7 +114,7 @@ func (c *Compose) instancesExist(resources []remoteResource) error {
 		resource.server.UseProject(c.GetProject())
 		_, _, err := resource.server.GetInstance(resource.name)
 		if err != nil {
-			return fmt.Errorf("Failed checking instance exists \"%s:%s\": %w", resource.remote, resource.name, err)
+			return fmt.Errorf("failed checking instance exists \"%s:%s\": %w", resource.remote, resource.name, err)
 		}
 	}
 

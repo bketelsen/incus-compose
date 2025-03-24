@@ -1,0 +1,17 @@
+actionsgo: true
+actionspages: true
+appname: incus-compose
+author: Brian Ketelsen
+basepath: /incus-compose
+devcontainer: true
+docs: true
+email: bketelsen@gmail.com
+installer: true
+license: mit
+modulename: github.com/bketelsen/incus-compose
+owner: bketelsen
+releaser: true
+repo: incus-compose
+repository: https://github.com/bketelsen/incus-compose
+taskfile: true
+verbose: false

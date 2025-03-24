@@ -1,8 +1,6 @@
 package application
 
 import (
-	"fmt"
-
 	api "github.com/lxc/incus/v6/shared/api"
 
 	"log/slog"
@@ -10,17 +8,12 @@ import (
 
 // DefaultNetworkName is the stable name of the default network for a stack
 func (c *Compose) DefaultNetworkName() string {
-	slog.Info("DefaultNetworkName", slog.String("name", c.Name))
+	slog.Info("Default Network", slog.String("name", c.Name))
 	return c.Name
 }
 
 // CreateDefaultNetwork creates the default network for a stack
 func (c *Compose) CreateDefaultNetwork(nettype string) error {
-	fmt.Println(c.ComposeProject.Networks)
-	for key, network := range c.ComposeProject.Networks {
-		fmt.Println(key, network)
-		fmt.Println(network.Name)
-	}
 
 	// check to see if the Networks map has a default key
 	// if not, return
@@ -59,7 +52,7 @@ func (c *Compose) CreateDefaultNetwork(nettype string) error {
 		return err
 	}
 
-	fmt.Printf("Network %s created"+"\n", resource.name)
+	slog.Info("Network created", "name", resource.name)
 
 	return nil
 }
@@ -84,7 +77,7 @@ func (c *Compose) DestroyDefaultNetwork() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Network %s deleted"+"\n", resource.name)
+	slog.Info("Network deleted", "name", resource.name)
 
 	return nil
 }

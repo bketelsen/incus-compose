@@ -23,28 +23,24 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/bketelsen/incus-compose/pkg/application"
-	"github.com/bketelsen/incus-compose/pkg/build"
 	"github.com/bketelsen/incus-compose/pkg/compose"
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/viper"
 
 	dockercompose "github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
 	config "github.com/lxc/incus/v6/shared/cliconfig"
 	"github.com/lxc/incus/v6/shared/util"
 
-	"github.com/lmittmann/tint"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/bketelsen/toolbox/cobra"
+	goversion "github.com/bketelsen/toolbox/go-version"
 )
 
 var debug bool
@@ -53,18 +49,56 @@ var confPath string
 var forceLocal bool
 
 // var app application.Compose
-var logLevel = new(slog.LevelVar) // Info by default
 var timeout int
 var dryRun bool
 var cwd string
 var project *dockercompose.Project
 var app *application.Compose
 
+var appname = "incus-compose"
+var (
+	version   = ""
+	commit    = ""
+	treeState = ""
+	date      = ""
+	builtBy   = ""
+)
+
+var bversion = buildVersion(version, commit, date, builtBy, treeState)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use: "incus-compose",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 
+	InitConfig: func() *viper.Viper {
+		config := viper.New()
+		config.SetEnvPrefix(appname)
+		config.AutomaticEnv()
+		config.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", ""))
+		config.SetConfigType("yaml")
+		config.SetConfigName("incus-compose.yaml")          // name of config file
+		config.AddConfigPath("$HOME/.config/incus-compose") // call multiple times to add many search paths
+		config.AddConfigPath(".")                           // optionally look for config in the working directory
+		if err := config.ReadInConfig(); err == nil {
+			slog.Info("Using config file:", slog.String("file", config.ConfigFileUsed()))
+		} else {
+			slog.Info("No config file found, using defaults")
+		}
+		return config
+	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		// set the slog default logger to the cobra logger
+		slog.SetDefault(cmd.Logger)
+		// set log level based on the --verbose flag
+		if cmd.GlobalConfig().GetBool("verbose") {
+			debug = true
+			cmd.SetLogLevel(slog.LevelDebug)
+			cmd.Logger.Debug("Debug logging enabled")
+		}
+		// skip all the rest for documentation generation
+		if cmd.Name() == "gendocs" {
+			return nil
+		}
 		// Figure out the config directory and config path
 		var configDir string
 		if os.Getenv("INCUS_CONF") != "" {
@@ -130,7 +164,6 @@ var rootCmd = &cobra.Command{
 
 		conf.ProjectOverride = os.Getenv("INCUS_PROJECT")
 
-		globalPreRunHook(cmd, args)
 		loader := configureLoader(cmd)
 		project, err = loader.LoadProject(context.Background())
 		if err != nil {
@@ -150,18 +183,11 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		app.Dag = g
-		if debug {
-			debugProject()
-			fmt.Println()
-			debugCompose()
-		}
-
 		return nil
 	},
-
+	Version: bversion.String(),
 	Short:   "Define and run multi-instance applications with Incus",
 	Long:    `Define and run multi-instance applications with Incus`,
-	Version: build.Version,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -177,67 +203,21 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cwd, "cwd", "", "change working directory")
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "print commands that would be executed without running them")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "verbose", "d", false, "verbose logging")
 }
 
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	viper.AutomaticEnv() // read in environment variables that match
-
-}
-func globalPreRunHook(_ *cobra.Command, _ []string) {
-
-	// set up logging
-	slog.SetDefault(slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      logLevel,
-			TimeFormat: time.Kitchen,
-		}),
-	))
-	if debug {
-		logLevel.Set(slog.LevelDebug)
-		slog.Debug("Verbose logging")
-	} else {
-		logLevel.Set(getLogLevelFromEnv())
-	}
-
-}
-
-func getLogLevelFromEnv() slog.Level {
-	levelStr := os.Getenv("LOG_LEVEL")
-	switch strings.ToLower(levelStr) {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-
-	}
-}
-
 func configureLoader(cmd *cobra.Command) compose.Loader {
-	f := cmd.Flags()
+
 	o := compose.LoaderOptions{}
-	var err error
 
 	// o.ConfigPaths, err = f.GetStringArray("file")
 	// if err != nil {
 	// 	panic(err)
 	// }
-
-	o.WorkingDir, err = f.GetString("cwd")
-	if err != nil {
-		panic(err)
-	}
+	o.WorkingDir = cmd.GlobalConfig().GetString("cwd")
 
 	// o.ProjectName, err = f.GetString("project-name")
 	// if err != nil {
@@ -246,14 +226,40 @@ func configureLoader(cmd *cobra.Command) compose.Loader {
 	return compose.NewLoaderWithOptions(o)
 }
 
-func debugCompose() {
-	fmt.Println("Compose:")
-	fmt.Println(app.String())
+// https://www.asciiart.eu/text-to-ascii-art to make your own
+// just make sure the font doesn't have backticks in the letters or
+// it will break the string quoting
+var asciiName = `
+ ██████╗ ██████╗ ███╗   ███╗██████╗  ██████╗ ███████╗███████╗
+██╔════╝██╔═══██╗████╗ ████║██╔══██╗██╔═══██╗██╔════╝██╔════╝
+██║     ██║   ██║██╔████╔██║██████╔╝██║   ██║███████╗█████╗  
+██║     ██║   ██║██║╚██╔╝██║██╔═══╝ ██║   ██║╚════██║██╔══╝  
+╚██████╗╚██████╔╝██║ ╚═╝ ██║██║     ╚██████╔╝███████║███████╗
+ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝      ╚═════╝ ╚══════╝╚══════╝
+`
 
-}
+// buildVersion builds the version info for the application
+func buildVersion(version, commit, date, builtBy, treeState string) goversion.Info {
+	return goversion.GetVersionInfo(
+		goversion.WithAppDetails(appname, "An application that does cool things.", "https://github.com/bketelsen/incus-compose"),
+		goversion.WithASCIIName(asciiName),
+		func(i *goversion.Info) {
+			if commit != "" {
+				i.GitCommit = commit
+			}
+			if treeState != "" {
+				i.GitTreeState = treeState
+			}
+			if date != "" {
+				i.BuildDate = date
+			}
+			if version != "" {
+				i.GitVersion = version
+			}
+			if builtBy != "" {
+				i.BuiltBy = builtBy
+			}
 
-func debugProject() {
-	fmt.Println("Project:")
-	bb, _ := yaml.Marshal(project)
-	fmt.Println(string(bb))
+		},
+	)
 }
