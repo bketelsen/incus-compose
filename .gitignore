@@ -1,10 +1,8 @@
-incus-compose
-dist/
 .envrc
 .secrets
 
-node_modules/
-public/
-resources/
 
+/incus-compose
 .hugo_build.lock
+/public
+/dist

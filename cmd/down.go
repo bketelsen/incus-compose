@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/spf13/cobra"
+	"github.com/bketelsen/toolbox/cobra"
 )
 
 // downCmd represents the down command
@@ -37,7 +37,7 @@ var downCmd = &cobra.Command{
 Optionally remove custom storage volumes declared in the compose file, with the --volumes flag.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		slog.Info("Down", slog.String("app", app.Name))
+		cmd.Logger.Info("Down", slog.String("app", app.Name))
 
 		err := app.Down(cmd.Flag("force").Changed, cmd.Flag("volumes").Changed, timeout)
 		if err != nil {

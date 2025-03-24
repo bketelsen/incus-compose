@@ -1,8 +1,6 @@
 package application
 
 import (
-	"log/slog"
-
 	"gopkg.in/yaml.v3"
 )
 
@@ -13,7 +11,6 @@ func (s *Service) String() string {
 }
 
 func (s *Service) GetContainerName() string {
-	slog.Info("GetContainerName", slog.String("container", s.ContainerName), slog.String("name", s.Name))
 	if s.ContainerName != "" {
 		return s.ContainerName
 	}

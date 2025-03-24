@@ -24,7 +24,7 @@ package cmd
 import (
 	"log/slog"
 
-	"github.com/spf13/cobra"
+	"github.com/bketelsen/toolbox/cobra"
 )
 
 // updateCmd represents the update command

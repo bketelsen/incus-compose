@@ -210,7 +210,6 @@ func (app *Compose) InitContainerForService(service string) error {
 		case "x-incus-snapshot":
 			snapshot, ok := v.(map[string]interface{})
 			if ok {
-				//fmt.Println("parsed snapshot", snapshot)
 				snap := &Snapshot{}
 				for k, v := range snapshot {
 					switch k {
@@ -221,7 +220,8 @@ func (app *Compose) InitContainerForService(service string) error {
 					case "pattern":
 						snap.Pattern = v.(string)
 					default:
-						fmt.Printf("service %q: unsupported snapshot configuration: %q\n", sc.Name, k)
+						slog.Error("Unsupported snapshot configuration", slog.String("key", k), slog.String("value", v.(string)))
+
 					}
 				}
 				instanceSnapshot = snap
@@ -229,7 +229,7 @@ func (app *Compose) InitContainerForService(service string) error {
 			}
 			continue
 		default:
-			fmt.Printf("service %q: unsupported compose extension: %q\n", sc.Name, k)
+			slog.Error("Unsupported compose extension", slog.String("key", k), slog.String("value", fmt.Sprintf("%v", v)))
 		}
 	}
 
@@ -470,7 +470,7 @@ func (app *Compose) removeInstance(name string, force bool) error {
 
 		if ct.StatusCode != 0 && ct.StatusCode != api.Stopped {
 			if !force {
-				return fmt.Errorf("The instance is currently running, stop it first or pass --force")
+				return fmt.Errorf("the instance is currently running, stop it first or pass --force")
 			}
 
 			req := api.InstanceStatePut{
@@ -486,7 +486,7 @@ func (app *Compose) removeInstance(name string, force bool) error {
 
 			err = op.Wait()
 			if err != nil {
-				return fmt.Errorf("Stopping the instance failed: %s", err)
+				return fmt.Errorf("stopping the instance failed: %s", err)
 			}
 
 			if ct.Ephemeral {
@@ -516,7 +516,7 @@ func (app *Compose) removeInstance(name string, force bool) error {
 		// Instance delete
 		op, err := resource.server.DeleteInstance(name)
 		if err != nil {
-			return fmt.Errorf("Failed deleting instance %q in project %q: %w", resource.name, connInfo.Project, err)
+			return fmt.Errorf("failed deleting instance %q in project %q: %w", resource.name, connInfo.Project, err)
 		}
 
 		return op.Wait()
