@@ -156,8 +156,7 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 		return fmt.Errorf("missing pool name")
 	}
 
-	client := resource.server
-	client.UseProject(app.GetProject())
+	client := resource.server.UseProject(app.GetProject())
 	err = client.CreateStoragePoolVolume(vol.Pool, newvol)
 	if err != nil {
 		return err
@@ -179,8 +178,7 @@ func (app *Compose) deleteVolume(name string, vol Volume) error {
 		return fmt.Errorf("missing pool name")
 	}
 
-	client := resource.server
-	client.UseProject(app.GetProject())
+	client := resource.server.UseProject(app.GetProject())
 
 	// Parse the input
 	volName, volType := parseVolume("custom", vol.Name)
@@ -214,7 +212,7 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 		return err
 	}
 
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	instance, etag, err := d.GetInstance(containerName)
 	if err != nil {
@@ -276,7 +274,7 @@ func (app *Compose) showVolume(service, name string, vol Volume) (*api.StorageVo
 	if err != nil {
 		return nil, err
 	}
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	volName, volType := parseVolume("custom", name)
 

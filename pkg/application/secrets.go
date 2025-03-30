@@ -76,7 +76,7 @@ func (app *Compose) CreateSecretsForService(service string) error {
 			if err != nil {
 				return err
 			}
-			d.UseProject(app.GetProject())
+			d = d.UseProject(app.GetProject())
 
 			inst, _, err := d.GetInstance(containerName)
 			if err != nil {

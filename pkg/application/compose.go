@@ -111,8 +111,8 @@ func (c *Compose) ParseServers(remotes ...string) ([]remoteResource, error) {
 // instancesExist iterates over a list of instances (or snapshots) and checks that they exist.
 func (c *Compose) instancesExist(resources []remoteResource) error {
 	for _, resource := range resources {
-		resource.server.UseProject(c.GetProject())
-		_, _, err := resource.server.GetInstance(resource.name)
+		d := resource.server.UseProject(c.GetProject())
+		_, _, err := d.GetInstance(resource.name)
 		if err != nil {
 			return fmt.Errorf("failed checking instance exists \"%s:%s\": %w", resource.remote, resource.name, err)
 		}

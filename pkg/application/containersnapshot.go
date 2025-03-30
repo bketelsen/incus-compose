@@ -26,7 +26,7 @@ func (app *Compose) createSnapshot(instanceName, snapshotName string, stateful b
 		return err
 	}
 
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	req := api.InstanceSnapshotsPost{
 		Name:     snapshotName,

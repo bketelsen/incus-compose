@@ -34,7 +34,7 @@ func (app *Compose) instanceExport(instanceName, targetName string, instanceOnly
 		return err
 	}
 
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	req := api.InstanceBackupsPost{
 		Name:             "",
