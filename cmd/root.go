@@ -95,8 +95,8 @@ var rootCmd = &cobra.Command{
 			cmd.SetLogLevel(slog.LevelDebug)
 			cmd.Logger.Debug("Debug logging enabled")
 		}
-		// skip all the rest for documentation generation
-		if cmd.Name() == "gendocs" {
+		// skip all the rest for documentation generation and shell completion
+		if cmd.Name() == "gendocs" || cmd.Name() == "completion" || (cmd.Parent() != nil && cmd.Parent().Name() == "completion") {
 			return nil
 		}
 		// Figure out the config directory and config path
