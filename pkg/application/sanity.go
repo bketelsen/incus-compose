@@ -62,7 +62,7 @@ func (app *Compose) SanityCheck() error {
 		}
 	}
 	// check to see if the profiles exist
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 	profileNames, err = d.GetProfileNames()
 	if err != nil {
 		return &SanityCheckError{

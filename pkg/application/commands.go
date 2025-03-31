@@ -232,7 +232,7 @@ func (app *Compose) Info() error {
 		if err != nil {
 			return err
 		}
-		d.UseProject(app.GetProject())
+		d = d.UseProject(app.GetProject())
 
 		i, _, err := d.GetInstance(containerName)
 		if err != nil {

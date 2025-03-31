@@ -28,7 +28,7 @@ func (app *Compose) RemoveContainerForService(service string, force bool) error 
 	if err != nil {
 		return err
 	}
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(containerName)
 	if inst != nil && inst.Name == containerName {
@@ -55,7 +55,7 @@ func (app *Compose) StopContainerForService(service string, stateful, force bool
 	if err != nil {
 		return err
 	}
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(containerName)
 	if inst != nil && inst.Name == containerName && inst.Status == "Running" {
@@ -84,7 +84,7 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 		return err
 	}
 
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(containerName)
 	if inst != nil && inst.Name == containerName && inst.Status == "Running" {
@@ -154,7 +154,7 @@ func (app *Compose) InitContainerForService(service string) error {
 		return err
 	}
 
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(service)
 	if inst != nil && inst.Name == service {
@@ -416,7 +416,7 @@ func (app *Compose) updateInstanceState(name string, state string, timeout int, 
 		return err
 	}
 
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	req := api.InstanceStatePut{
 		Action:   state,
@@ -458,12 +458,12 @@ func (app *Compose) removeInstance(name string, force bool) error {
 
 	// Process with deletion.
 	for _, resource := range resources {
-		connInfo, err := resource.server.GetConnectionInfo()
+		connInfo, err := resource.server.UseProject(app.GetProject()).GetConnectionInfo()
 		if err != nil {
 			return err
 		}
 
-		ct, _, err := resource.server.GetInstance(resource.name)
+		ct, _, err := resource.server.UseProject(app.GetProject()).GetInstance(resource.name)
 		if err != nil {
 			return err
 		}
@@ -479,7 +479,7 @@ func (app *Compose) removeInstance(name string, force bool) error {
 				Force:   true,
 			}
 
-			op, err := resource.server.UpdateInstanceState(resource.name, req, "")
+			op, err := resource.server.UseProject(app.GetProject()).UpdateInstanceState(resource.name, req, "")
 			if err != nil {
 				return err
 			}
@@ -514,7 +514,7 @@ func (app *Compose) removeInstance(name string, force bool) error {
 		// }
 
 		// Instance delete
-		op, err := resource.server.DeleteInstance(name)
+		op, err := resource.server.UseProject(app.GetProject()).DeleteInstance(name)
 		if err != nil {
 			return fmt.Errorf("failed deleting instance %q in project %q: %w", resource.name, connInfo.Project, err)
 		}
@@ -561,7 +561,7 @@ func (app *Compose) addDevice(instance, name string, device map[string]string) e
 	if err != nil {
 		return err
 	}
-	d.UseProject(app.GetProject())
+	d = d.UseProject(app.GetProject())
 
 	inst, etag, err := d.GetInstance(instance)
 	if err != nil {

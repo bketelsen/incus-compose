@@ -36,7 +36,7 @@ func (app *Compose) CreateBindsForService(service string) error {
 		if err != nil {
 			return err
 		}
-		d.UseProject(app.GetProject())
+		d = d.UseProject(app.GetProject())
 
 		inst, etag, err := d.GetInstance(containerName)
 		if err != nil {
