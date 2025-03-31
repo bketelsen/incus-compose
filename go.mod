@@ -2,11 +2,11 @@ module github.com/bketelsen/incus-compose
 
 go 1.23.4
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
-	github.com/bketelsen/toolbox v0.4.3
+	github.com/bketelsen/toolbox v0.6.1
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/compose-spec/compose-go/v2 v2.4.9
 	github.com/dominikbraun/graph v0.23.0
