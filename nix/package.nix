@@ -1,15 +1,15 @@
 {
   lib,
-  buildGo123Module,
+  buildGo124Module,
   installShellFiles,
 }:
-buildGo123Module rec {
+buildGo124Module rec {
   pname = "incus-compose";
   version = "latest";
 
   src = ./..;
 
-  vendorHash = "sha256-QpydtvU/y+FWiWHbzIwryrPH0FMnjROEKjR9IYwxnLo=";
+  vendorHash = "sha256-f75PNJ+2WK/1p1toVAqIKX270Lv+eTRqWURXcxWcRHQ=";
   subPackages = ["."];
 
   nativeBuildInputs = [
