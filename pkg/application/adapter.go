@@ -4,6 +4,8 @@
 package application
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
 
 	"github.com/compose-spec/compose-go/v2/types"
@@ -240,7 +242,13 @@ func parseService(s types.ServiceConfig) Service {
 }
 
 func bindNameStable(path string) string {
-	return slug.Make(path)
+	name := slug.Make(path)
+	if len(name) > 64 {
+		sha256sum := sha256.Sum256([]byte(name))
+		name = hex.EncodeToString(sha256sum[:16])
+	}
+
+	return name
 }
 
 func parseSecret(s types.SecretConfig) SecretsFile {

@@ -1,6 +1,8 @@
 package application
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -8,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gosimple/slug"
 	api "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -254,7 +257,12 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 }
 
 func (v *Volume) CreateName(application string, service string, volume string) string {
-	return fmt.Sprintf("%s-%s-%s", application, service, volume)
+	name := slug.Make(fmt.Sprintf("%s-%s-%s", application, service, volume))
+	if len(name) > 64 {
+		sha256sum := sha256.Sum256([]byte(name))
+		name = hex.EncodeToString(sha256sum[:16])
+	}
+	return name
 }
 
 func parseVolume(defaultType string, name string) (string, string) {
