@@ -33,11 +33,11 @@ func guessImage(conf *config.Config, d incus.InstanceServer, instRemote string, 
 	}
 
 	if len(fields) == 1 {
-		fmt.Fprintf(os.Stderr, "The local image '%q' couldn't be found, trying '%q:' instead."+"\n", imageRef, fields[0])
+		fmt.Fprintf(os.Stderr, "The local image '%s' couldn't be found, trying '%s:' instead."+"\n", imageRef, fields[0])
 		return fields[0], "default"
 	}
 
-	fmt.Fprintf(os.Stderr, "The local image '%q' couldn't be found, trying '%q:%q' instead."+"\n", imageRef, fields[0], fields[1])
+	fmt.Fprintf(os.Stderr, "The local image '%s' couldn't be found, trying '%s:%s' instead."+"\n", imageRef, fields[0], fields[1])
 	return fields[0], fields[1]
 }
 

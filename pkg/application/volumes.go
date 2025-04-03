@@ -1,8 +1,6 @@
 package application
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,30 +8,46 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gosimple/slug"
 	api "github.com/lxc/incus/v6/shared/api"
 )
 
 func (app *Compose) CreateVolumesForService(service string) error {
-	slog.Info("Creating Volumes", slog.String("instance", service))
-
 	svc, ok := app.Services[service]
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
-	containerName := svc.GetContainerName()
-	for volName, vol := range svc.Volumes {
-		slog.Info("Creating volume", "name", volName)
-		completeName := vol.CreateName(app.Name, containerName, volName)
-		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
+	d, err := app.getInstanceServer(service, app.GetProject())
+	if err != nil {
+		return err
+	}
+	inst, _, err := d.GetInstance(service)
+	if err != nil {
+		return err
+	}
 
-		existingVolume, _ := app.showVolume(containerName, completeName, *vol)
+	containerName := inst.Name
+	for _, vol := range svc.Volumes {
+		slog.Info("Creating volume", "name", vol.Name)
+		slog.Debug("Volume", slog.String("name", vol.Name), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		if existingVolume != nil && completeName == existingVolume.Name {
-			slog.Info("Volume found", slog.String("volume", completeName))
+		existingVolume, _ := app.showVolume(containerName, vol.Name, *vol)
+
+		if existingVolume != nil && vol.Name == existingVolume.Name {
+			slog.Info("Volume found", slog.String("volume", vol.Name))
 		} else {
-			slog.Info("Creating volume", "name", completeName)
-			err := app.createVolume(completeName, *vol)
+			slog.Info("Creating volume", "name", vol.Name)
+
+			uid, ok := inst.Config["oci.uid"]
+			if !ok {
+				uid = "0"
+			}
+
+			gid, ok := inst.Config["oci.gid"]
+			if !ok {
+				gid = "0"
+			}
+
+			err := app.createVolume(vol.Name, *vol, uid, gid)
 			if err != nil {
 				return err
 			}
@@ -50,10 +64,9 @@ func (app *Compose) ListVolumesForService(service string) ([]string, error) {
 		return []string{}, fmt.Errorf("service %s not found", service)
 	}
 
-	containerName := svc.GetContainerName()
 	volumes := []string{}
-	for volName, vol := range svc.Volumes {
-		volumes = append(volumes, vol.CreateName(app.Name, containerName, volName)+" (pool: "+vol.Pool+")")
+	for _, vol := range svc.Volumes {
+		volumes = append(volumes, vol.Name+" (pool: "+vol.Pool+")")
 	}
 
 	return volumes, nil
@@ -66,19 +79,17 @@ func (app *Compose) DeleteVolumesForService(service string) error {
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
-	containerName := svc.GetContainerName()
 
-	for volName, vol := range svc.Volumes {
+	for _, vol := range svc.Volumes {
 
-		completeName := vol.CreateName(app.Name, containerName, volName)
-		slog.Debug("Volume", slog.String("name", completeName), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
+		slog.Debug("Volume", slog.String("name", vol.Name), slog.String("pool", vol.Pool), slog.String("mountpoint", vol.Mountpoint))
 
-		existingVolume, _ := app.showVolume(containerName, completeName, *vol)
+		existingVolume, _ := app.showVolume(service, vol.Name, *vol)
 
-		if existingVolume == nil || completeName != existingVolume.Name {
-			slog.Info("Volume not found", slog.String("volume", completeName))
+		if existingVolume == nil || vol.Name != existingVolume.Name {
+			slog.Info("Volume not found", slog.String("volume", vol.Name))
 		} else {
-			err := app.deleteVolume(completeName, *vol)
+			err := app.deleteVolume(vol.Name, *vol)
 			if err != nil {
 				return err
 			}
@@ -95,10 +106,9 @@ func (app *Compose) AttachVolumesForService(service string) error {
 	if !ok {
 		return fmt.Errorf("service %s not found", service)
 	}
-	containerName := svc.GetContainerName()
-	for volName, vol := range svc.Volumes {
+	for _, vol := range svc.Volumes {
 
-		err := app.attachVolume(vol.CreateName(app.Name, containerName, volName), service, *vol)
+		err := app.attachVolume(vol.Name, service, *vol)
 		if err != nil {
 			return err
 		}
@@ -107,8 +117,8 @@ func (app *Compose) AttachVolumesForService(service string) error {
 	return nil
 }
 
-func (app *Compose) createVolume(name string, vol Volume) error {
-	slog.Info("Creating Volume", slog.String("volume", name))
+func (app *Compose) createVolume(name string, vol Volume, uid string, gid string) error {
+	slog.Info("Creating Volume", "volume", name, "uid", uid, "gid", gid)
 
 	config := make(map[string]string)
 
@@ -124,30 +134,24 @@ func (app *Compose) createVolume(name string, vol Volume) error {
 		}
 	}
 
-	if vol.Shift {
-		config["security.shifted"] = "true"
-	}
+	config["security.shifted"] = "true"
+
+	config["initial.uid"] = uid
+	config["initial.gid"] = gid
 
 	// Parse the input
 	volName, volType := parseVolume("custom", name)
 
-	var volumePut api.StorageVolumePut
-
 	// Create the storage volume entry
 	newvol := api.StorageVolumesPost{
-		Name:             volName,
-		Type:             volType,
-		ContentType:      "filesystem",
-		StorageVolumePut: volumePut,
+		Name:        volName,
+		Type:        volType,
+		ContentType: "filesystem",
+		StorageVolumePut: api.StorageVolumePut{
+			Config: config,
+		},
 	}
 
-	if volumePut.Config == nil {
-		newvol.Config = map[string]string{}
-	}
-
-	for k, v := range config {
-		newvol.Config[k] = v
-	}
 	// Parse remote
 	resources, err := app.ParseServers(vol.Pool)
 	if err != nil {
@@ -210,16 +214,15 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 	}
 	containerName := svc.GetContainerName()
 
-	d, err := app.getInstanceServer(containerName)
+	d, err := app.getInstanceServer(containerName, app.GetProject())
 	if err != nil {
 		return err
 	}
 
-	d = d.UseProject(app.GetProject())
-
 	instance, etag, err := d.GetInstance(containerName)
 	if err != nil {
 		slog.Error(err.Error())
+		return err
 	}
 
 	// Check if device exists
@@ -256,15 +259,6 @@ func (app *Compose) attachVolume(name string, service string, vol Volume) error 
 	return op.Wait()
 }
 
-func (v *Volume) CreateName(application string, service string, volume string) string {
-	name := slug.Make(fmt.Sprintf("%s-%s-%s", application, service, volume))
-	if len(name) > 64 {
-		sha256sum := sha256.Sum256([]byte(name))
-		name = hex.EncodeToString(sha256sum[:16])
-	}
-	return name
-}
-
 func parseVolume(defaultType string, name string) (string, string) {
 	parsedName := strings.SplitN(name, "/", 2)
 	if len(parsedName) == 1 {
@@ -278,11 +272,10 @@ func parseVolume(defaultType string, name string) (string, string) {
 
 func (app *Compose) showVolume(service, name string, vol Volume) (*api.StorageVolume, error) {
 
-	d, err := app.getInstanceServer(service)
+	d, err := app.getInstanceServer(service, app.GetProject())
 	if err != nil {
 		return nil, err
 	}
-	d = d.UseProject(app.GetProject())
 
 	volName, volType := parseVolume("custom", name)
 

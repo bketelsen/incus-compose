@@ -10,12 +10,17 @@ import (
 
 // keep all the external commands in one place
 func (app *Compose) Up() error {
-	err := app.SanityCheck()
+	err := app.CreateProject(app.GetProject())
+	if err != nil {
+		return err
+	}
+
+	err = app.SanityCheck()
 	if err != nil {
 		return err
 	}
 	err = app.CreateDefaultNetwork("")
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		return err
 	}
 
@@ -113,13 +118,13 @@ func (app *Compose) Snapshot(noexpiry, stateful, volumes bool) error {
 		}
 		slog.Info("Instance snapshot complete", slog.String("instance", service))
 		if volumes {
-			for volName, vol := range app.Services[service].Volumes {
-				slog.Info("Volume snapshot start", slog.String("volume", vol.CreateName(app.Name, service, volName)))
-				err := app.SnapshotVolume(vol.Pool, vol.CreateName(app.Name, service, volName), noexpiry, stateful, volumes)
+			for _, vol := range app.Services[service].Volumes {
+				slog.Info("Volume snapshot start", slog.String("volume", vol.Name))
+				err := app.SnapshotVolume(vol.Pool, vol.Name, noexpiry, stateful, volumes)
 				if err != nil {
 					return err
 				}
-				slog.Info("Volume snapshot complete", slog.String("volume", vol.CreateName(app.Name, service, volName)))
+				slog.Info("Volume snapshot complete", slog.String("volume", vol.Name))
 			}
 		}
 
@@ -140,13 +145,13 @@ func (app *Compose) Export(volumes bool, customVolumesOnly bool) error {
 			slog.Info("Instance export complete", slog.String("instance", service))
 		}
 		if customVolumesOnly {
-			for volName, vol := range app.Services[service].Volumes {
-				slog.Info("Volume export start", slog.String("volume", vol.CreateName(app.Name, service, volName)))
-				err := app.ExportVolume(vol.Pool, vol.CreateName(app.Name, service, volName))
+			for _, vol := range app.Services[service].Volumes {
+				slog.Info("Volume export start", slog.String("volume", vol.Name))
+				err := app.ExportVolume(vol.Pool, vol.Name)
 				if err != nil {
 					return err
 				}
-				slog.Info("Volume export complete", slog.String("volume", vol.CreateName(app.Name, service, volName)))
+				slog.Info("Volume export complete", slog.String("volume", vol.Name))
 			}
 		}
 
@@ -228,11 +233,10 @@ func (app *Compose) Info() error {
 
 		containerName := svc.GetContainerName()
 
-		d, err := app.getInstanceServer(containerName)
+		d, err := app.getInstanceServer(containerName, app.GetProject())
 		if err != nil {
 			return err
 		}
-		d = d.UseProject(app.GetProject())
 
 		i, _, err := d.GetInstance(containerName)
 		if err != nil {
