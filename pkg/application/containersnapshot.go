@@ -21,12 +21,10 @@ func (app *Compose) SnapshotInstance(service string, noexpiry, stateful, volumes
 }
 
 func (app *Compose) createSnapshot(instanceName, snapshotName string, stateful bool, noexpiry bool, expiration time.Time) error {
-	d, err := app.getInstanceServer(instanceName)
+	d, err := app.getInstanceServer(instanceName, app.GetProject())
 	if err != nil {
 		return err
 	}
-
-	d = d.UseProject(app.GetProject())
 
 	req := api.InstanceSnapshotsPost{
 		Name:     snapshotName,
