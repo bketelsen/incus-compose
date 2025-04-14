@@ -8,7 +8,7 @@ require (
 	github.com/alexellis/go-execute/v2 v2.2.1
 	github.com/bketelsen/toolbox v0.6.1
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/compose-spec/compose-go/v2 v2.4.9
+	github.com/compose-spec/compose-go/v2 v2.6.0
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.15.0
 	github.com/lxc/incus/v6 v6.11.0
@@ -69,7 +69,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
