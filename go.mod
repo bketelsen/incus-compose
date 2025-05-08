@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/alexellis/go-execute/v2 v2.2.1
-	github.com/bketelsen/toolbox v0.6.1
+	github.com/bketelsen/toolbox v0.9.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/compose-spec/compose-go/v2 v2.6.1
 	github.com/dominikbraun/graph v0.23.0
