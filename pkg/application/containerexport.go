@@ -29,12 +29,10 @@ func exportName(resource string) string {
 }
 
 func (app *Compose) instanceExport(instanceName, targetName string, instanceOnly bool) error {
-	d, err := app.getInstanceServer(instanceName)
+	d, err := app.getInstanceServer(instanceName, app.GetProject())
 	if err != nil {
 		return err
 	}
-
-	d = d.UseProject(app.GetProject())
 
 	req := api.InstanceBackupsPost{
 		Name:             "",
