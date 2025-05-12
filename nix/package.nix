@@ -9,7 +9,7 @@ buildGo124Module rec {
 
   src = ./..;
 
-  vendorHash = "sha256-f75PNJ+2WK/1p1toVAqIKX270Lv+eTRqWURXcxWcRHQ=";
+  vendorHash = "sha256-jP1ejPPPTtSrL+EToJQ0tX2owev0itiso71b+iYrDMI=";
   subPackages = ["."];
 
   nativeBuildInputs = [
