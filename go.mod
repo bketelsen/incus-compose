@@ -8,7 +8,7 @@ require (
 	github.com/alexellis/go-execute/v2 v2.2.1
 	github.com/bketelsen/toolbox v0.6.1
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/compose-spec/compose-go/v2 v2.6.2
+	github.com/compose-spec/compose-go/v2 v2.6.3
 	github.com/dominikbraun/graph v0.23.0
 	github.com/gosimple/slug v1.15.0
 	github.com/lxc/incus/v6 v6.12.0
