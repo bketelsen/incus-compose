@@ -24,11 +24,10 @@ func (app *Compose) RemoveContainerForService(service string, force bool) error 
 
 	containerName := svc.GetContainerName()
 
-	d, err := app.getInstanceServer(containerName)
+	d, err := app.getInstanceServer(containerName, app.GetProject())
 	if err != nil {
 		return err
 	}
-	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(containerName)
 	if inst != nil && inst.Name == containerName {
@@ -51,11 +50,10 @@ func (app *Compose) StopContainerForService(service string, stateful, force bool
 	}
 	containerName := svc.GetContainerName()
 
-	d, err := app.getInstanceServer(containerName)
+	d, err := app.getInstanceServer(containerName, app.GetProject())
 	if err != nil {
 		return err
 	}
-	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(containerName)
 	if inst != nil && inst.Name == containerName && inst.Status == "Running" {
@@ -79,12 +77,10 @@ func (app *Compose) StartContainerForService(service string, wait bool) error {
 
 	containerName := svc.GetContainerName()
 
-	d, err := app.getInstanceServer(containerName)
+	d, err := app.getInstanceServer(containerName, app.GetProject())
 	if err != nil {
 		return err
 	}
-
-	d = d.UseProject(app.GetProject())
 
 	inst, _, _ := d.GetInstance(containerName)
 	if inst != nil && inst.Name == containerName && inst.Status == "Running" {
@@ -149,13 +145,10 @@ func (app *Compose) InitContainerForService(service string) error {
 		return err
 	}
 
-	d, err := app.conf.GetInstanceServer(remote)
+	d, err := app.getInstanceServer(service, app.GetProject())
 	if err != nil {
 		return err
 	}
-
-	d = d.UseProject(app.GetProject())
-
 	inst, _, _ := d.GetInstance(service)
 	if inst != nil && inst.Name == service {
 		slog.Info("Instance found", slog.String("instance", service))
@@ -347,6 +340,14 @@ func (app *Compose) InitContainerForService(service string) error {
 	instancePost.Description = app.Name + "-" + sc.Name
 	instancePost.Profiles = profiles
 
+	if sc.Entrypoint != nil {
+		if sc.Command != nil {
+			instancePost.Config["oci.entrypoint"] = fmt.Sprintf("%s \"%s\"", sc.Entrypoint[0], strings.Join(sc.Command, "\" \""))
+		} else {
+			instancePost.Config["oci.entrypoint"] = sc.Entrypoint[0]
+		}
+	}
+
 	// gpu
 	if assignGPU {
 		devicesMap[sc.Name+"GPU"] = map[string]string{
@@ -411,12 +412,10 @@ func (app *Compose) updateInstanceState(name string, state string, timeout int, 
 		return err
 	}
 
-	d, err := app.conf.GetInstanceServer(remote)
+	d, err := app.getInstanceServer(remote, app.GetProject())
 	if err != nil {
 		return err
 	}
-
-	d = d.UseProject(app.GetProject())
 
 	req := api.InstanceStatePut{
 		Action:   state,
@@ -433,13 +432,22 @@ func (app *Compose) updateInstanceState(name string, state string, timeout int, 
 	return op.Wait()
 }
 
-func (app *Compose) getInstanceServer(name string) (incus.InstanceServer, error) {
+func (app *Compose) getInstanceServer(name string, project string) (incus.InstanceServer, error) {
 	remote, _, err := app.conf.ParseRemote(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return app.conf.GetInstanceServer(remote)
+	d, err := app.conf.GetInstanceServer(remote)
+	if err != nil {
+		return nil, err
+	}
+
+	if project != "" {
+		d = d.UseProject(project)
+	}
+
+	return d, nil
 
 }
 func (app *Compose) removeInstance(name string, force bool) error {
@@ -557,11 +565,10 @@ func readEnvironmentFile(path string) (map[string]string, error) {
 
 func (app *Compose) addDevice(instance, name string, device map[string]string) error {
 
-	d, err := app.getInstanceServer(instance)
+	d, err := app.getInstanceServer(instance, app.GetProject())
 	if err != nil {
 		return err
 	}
-	d = d.UseProject(app.GetProject())
 
 	inst, etag, err := d.GetInstance(instance)
 	if err != nil {
