@@ -72,11 +72,10 @@ func (app *Compose) CreateSecretsForService(service string) error {
 			bindName := fmt.Sprintf("secrets-%s", service)
 
 			// check for existing bind
-			d, err := app.getInstanceServer(containerName)
+			d, err := app.getInstanceServer(containerName, app.GetProject())
 			if err != nil {
 				return err
 			}
-			d = d.UseProject(app.GetProject())
 
 			inst, _, err := d.GetInstance(containerName)
 			if err != nil {

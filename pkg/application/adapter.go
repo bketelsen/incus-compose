@@ -17,7 +17,6 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 	compose := &Compose{}
 	compose.ComposeProject = p
 	compose.Name = p.Name
-	compose.Project = "default"
 	compose.conf = conf
 
 	// parse extensions
@@ -46,7 +45,7 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 	// parse services
 	compose.Services = make(map[string]Service)
 	for _, s := range p.Services {
-		service := parseService(s)
+		service := parseService(s, compose)
 		compose.Services[s.Name] = service
 	}
 
@@ -90,8 +89,8 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 		}
 		// now find the service that uses this volume
 		for _, s := range compose.Services {
-			for k, v := range s.Volumes {
-				fullVolName := p.Name + "_" + k
+			for _, v := range s.Volumes {
+				fullVolName := p.Name + "_" + v.Name
 				if fullVolName == vol.Name {
 					if pool, exists := vol.DriverOpts["pool"]; exists && pool != "" {
 						v.Pool = pool
@@ -101,15 +100,16 @@ func BuildDirect(p *types.Project, conf *cliconfig.Config) (*Compose, error) {
 						v.Pool = "default"
 					}
 					v.Snapshot = snap
-					v.Name = v.CreateName(p.Name, s.Name, k)
+					v.Name = createName(p.Name, v.Name)
 				}
 			}
 		}
 	}
 	return compose, nil
 }
-func parseService(s types.ServiceConfig) Service {
+func parseService(s types.ServiceConfig, compose *Compose) Service {
 	service := Service{}
+	service.compose = compose
 	for dep := range s.DependsOn {
 		service.DependsOn = append(service.DependsOn, dep)
 	}
@@ -173,7 +173,7 @@ func parseService(s types.ServiceConfig) Service {
 			slog.Error("unsupported compose extension", "service", s.Name, "extension", k)
 		}
 	}
-	service.Volumes = make(map[string]*Volume)
+	service.Volumes = []*Volume{}
 	service.BindMounts = make(map[string]Bind)
 
 	// parse volumes
@@ -193,21 +193,18 @@ func parseService(s types.ServiceConfig) Service {
 		switch v.Type {
 		case "volume":
 			volume := &Volume{}
+			volume.Name = v.Source
 			volume.Mountpoint = v.Target
 			volume.ReadOnly = v.ReadOnly
-			if shifted {
-				volume.Shift = shifted
-			}
-			service.Volumes[v.Source] = volume
+			volume.Shift = shifted
+			service.Volumes = append(service.Volumes, volume)
 		case "bind":
 			bind := Bind{}
 			bind.Source = v.Source
 			bind.Target = v.Target
 			bind.Type = "disk"
 			bind.ReadOnly = v.ReadOnly
-			if shifted {
-				bind.Shift = shifted
-			}
+			bind.Shift = true
 
 			for key, val := range v.Extensions {
 				switch key {

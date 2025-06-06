@@ -3,6 +3,7 @@ package application
 import (
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/dominikbraun/graph"
+	incus "github.com/lxc/incus/v6/client"
 	config "github.com/lxc/incus/v6/shared/cliconfig"
 )
 
@@ -16,6 +17,9 @@ type Compose struct {
 	ComposeProject *types.Project              `yaml:"-"`
 	SecretsFiles   map[string]SecretsFile      `yaml:"secretsfiles,omitempty"`
 	conf           *config.Config
+
+	incusInstance     incus.InstanceServer
+	incusProjectNames []string
 }
 
 type Service struct {
@@ -23,7 +27,7 @@ type Service struct {
 	ContainerName         string             `yaml:"containername,omitempty"`
 	Image                 string             `yaml:"image" validate:"required"`
 	GPU                   bool               `yaml:"gpu,omitempty"`
-	Volumes               map[string]*Volume `yaml:"volumes,omitempty" validate:"dive,required"`
+	Volumes               []*Volume          `yaml:"volumes,omitempty" validate:"dive,required"`
 	BindMounts            map[string]Bind    `yaml:"binds,omitempty"`
 	AdditionalProfiles    []string           `yaml:"additional_profiles,omitempty" validate:"dive,profile-exists"`
 	EnvironmentFile       string             `yaml:"environment_file,omitempty"`
@@ -35,6 +39,8 @@ type Service struct {
 	InventoryGroups       []string           `yaml:"inventory_groups,omitempty"`
 	Storage               string             `yaml:"storage,omitempty"`
 	Secrets               map[string]Secret  `yaml:"secrets,omitempty"`
+
+	compose *Compose
 }
 
 type Snapshot struct {
